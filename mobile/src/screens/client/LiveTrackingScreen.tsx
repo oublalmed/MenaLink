@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { getDatabase, onValue, ref } from 'firebase/database';
+import { onValue, ref } from 'firebase/database';
 import { firebaseDatabase } from '../../services/firebase';
 import { useTheme } from '../../theme';
 import { Avatar, LoadingSpinner } from '../../components/atoms';

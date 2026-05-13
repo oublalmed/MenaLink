@@ -1,37 +1,61 @@
 import React, { useState } from 'react';
 import {
-  Alert, SafeAreaView, ScrollView, StyleSheet,
-  Switch, Text, TextInput, TouchableOpacity, View,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useTheme } from '../../theme';
-import { Avatar, Button, Divider } from '../../components/atoms';
+import { Avatar, Badge, Button, Divider } from '../../components/atoms';
 import { useAuthStore } from '../../store/authStore';
 
+// ── Mock data ─────────────────────────────────────────────────────────────────
+
 const MOCK_ADDRESSES = [
-  { id: '1', label: 'Domicile', street: '12 Rue Anfa', city: 'Casablanca', isDefault: true },
-  { id: '2', label: 'Bureau', street: '45 Bd Zerktouni', city: 'Casablanca', isDefault: false },
+  { id: '1', label: 'Domicile', line: '14 Rue Ibn Battouta, Casablanca 20100' },
+  { id: '2', label: 'Bureau',   line: '3 Avenue Mohammed V, Rabat 10000' },
 ];
 
-const MOCK_PAYMENTS = [
-  { id: '1', date: '12/03/2024', service: 'Grand ménage', amount: 350, status: 'PAID' },
-  { id: '2', date: '28/02/2024', service: 'Ménage', amount: 160, status: 'PAID' },
-  { id: '3', date: '15/02/2024', service: 'Repassage', amount: 120, status: 'REFUNDED' },
+const MOCK_TRANSACTIONS = [
+  { id: 't1', date: '2025-05-10', service: 'Nettoyage complet',   amount: 350, status: 'PAID'    },
+  { id: 't2', date: '2025-04-28', service: 'Ménage hebdomadaire', amount: 200, status: 'PAID'    },
+  { id: 't3', date: '2025-04-15', service: 'Nettoyage vitrerie',  amount: 180, status: 'PENDING' },
 ];
 
-const STATUS_COLOR: Record<string, string> = { PAID: '#27AE60', PENDING: '#E67E22', REFUNDED: '#2980B9', FAILED: '#E74C3C' };
-const STATUS_LABEL: Record<string, string> = { PAID: 'Payé', PENDING: 'En attente', REFUNDED: 'Remboursé', FAILED: 'Échoué' };
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function ClientProfileScreen() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const { user, logout } = useAuthStore();
 
-  const [isEditing, setEditing] = useState(false);
+  // Edit mode
+  const [editMode, setEditMode]   = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
-  const [lastName, setLastName]   = useState(user?.lastName ?? '');
-  const [phone, setPhone]         = useState(user?.phone ?? '');
-  const [notifBookings, setNotifBookings] = useState(true);
-  const [notifMessages, setNotifMessages] = useState(true);
-  const [notifPromos, setNotifPromos]     = useState(false);
+  const [lastName, setLastName]   = useState(user?.lastName  ?? '');
+  const [email, setEmail]         = useState(user?.email     ?? '');
+  const [phone, setPhone]         = useState(user?.phone     ?? '');
+
+  // Notification toggles
+  const [notifBookings,   setNotifBookings]   = useState(true);
+  const [notifMessages,   setNotifMessages]   = useState(true);
+  const [notifPromotions, setNotifPromotions] = useState(false);
+
+  function handleAvatarPress() {
+    Alert.alert('Photo de profil', 'Que souhaitez-vous faire ?', [
+      { text: 'Changer la photo', onPress: () => Alert.alert('Bientôt disponible', 'Fonctionnalité à venir.') },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  }
+
+  function handleSaveProfile() {
+    setEditMode(false);
+    Alert.alert('Profil mis à jour', 'Vos informations ont été enregistrées.');
+  }
 
   function handleLogout() {
     Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
@@ -40,184 +64,229 @@ export function ClientProfileScreen() {
     ]);
   }
 
-  function handleChangePhoto() {
-    Alert.alert('Changer la photo', 'Sélectionnez une option', [
-      { text: 'Prendre une photo', onPress: () => {} },
-      { text: 'Choisir dans la galerie', onPress: () => {} },
-      { text: 'Annuler', style: 'cancel' },
-    ]);
-  }
-
-  const SectionTitle = ({ children }: { children: string }) => (
-    <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption, fontWeight: '600', marginBottom: spacing.sm, marginTop: spacing.md, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-      {children}
-    </Text>
-  );
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.text,
+    fontSize: fontSize.body,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    marginBottom: spacing.sm,
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.card, paddingVertical: spacing.xl }]}>
-          <TouchableOpacity onPress={handleChangePhoto} accessibilityLabel="Changer la photo de profil">
-            <View style={{ position: 'relative' }}>
-              <Avatar size={80} uri={user?.avatarUrl} name={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`} />
-              <View style={[styles.cameraBtn, { backgroundColor: colors.primary, borderRadius: radius.full }]}>
-                <Text style={{ fontSize: 12 }}>📷</Text>
-              </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+
+        {/* ── Profile header ── */}
+        <View style={[styles.profileHeader, { backgroundColor: colors.card, paddingVertical: spacing.xl }]}>
+          <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8}>
+            <Avatar
+              firstName={editMode ? firstName : (user?.firstName ?? '')}
+              lastName={editMode ? lastName  : (user?.lastName  ?? '')}
+              uri={user?.avatarUrl}
+              size="xl"
+            />
+            <View style={[styles.cameraOverlay, { backgroundColor: colors.primary, borderRadius: radius.full }]}>
+              <Text style={{ color: '#fff', fontSize: 12 }}>📷</Text>
             </View>
           </TouchableOpacity>
-          <Text style={[styles.name, { color: colors.text, fontSize: fontSize.h2, marginTop: spacing.md }]}>
-            {user?.firstName} {user?.lastName}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: fontSize.body }}>{user?.email}</Text>
-        </View>
 
-        <View style={{ padding: spacing.md }}>
-          {/* Personal Info */}
-          <View style={[styles.section, { backgroundColor: colors.card, borderRadius: radius.lg }]}>
-            <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
-              <SectionTitle>Informations personnelles</SectionTitle>
-              <TouchableOpacity onPress={() => setEditing(e => !e)} accessibilityLabel={isEditing ? 'Annuler' : 'Modifier'}>
-                <Text style={{ color: colors.primary, fontSize: fontSize.body }}>{isEditing ? 'Annuler' : 'Modifier'}</Text>
+          {!editMode ? (
+            <>
+              <Text style={[styles.fullName, { color: colors.text, fontSize: fontSize.h2, marginTop: spacing.md }]}>
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.body }}>{user?.email}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption, marginTop: 2 }}>{user?.phone}</Text>
+              <TouchableOpacity
+                style={[styles.editBtn, { borderColor: colors.primary, borderRadius: radius.full, marginTop: spacing.md }]}
+                onPress={() => setEditMode(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: colors.primary, fontSize: fontSize.caption, fontWeight: '600' }}>
+                  Modifier le profil
+                </Text>
               </TouchableOpacity>
+            </>
+          ) : (
+            <View style={{ width: '80%', marginTop: spacing.md }}>
+              <TextInput style={inputStyle} value={firstName} onChangeText={setFirstName} placeholder="Prénom"     placeholderTextColor={colors.textSecondary} />
+              <TextInput style={inputStyle} value={lastName}  onChangeText={setLastName}  placeholder="Nom"        placeholderTextColor={colors.textSecondary} />
+              <TextInput style={inputStyle} value={email}     onChangeText={setEmail}     placeholder="Email"      keyboardType="email-address" autoCapitalize="none" placeholderTextColor={colors.textSecondary} />
+              <TextInput style={inputStyle} value={phone}     onChangeText={setPhone}     placeholder="Téléphone"  keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
+              <View style={styles.editActions}>
+                <Button variant="outline" size="sm" onPress={() => setEditMode(false)}>Annuler</Button>
+                <Button variant="primary" size="sm" onPress={handleSaveProfile}>Enregistrer</Button>
+              </View>
             </View>
-            {isEditing ? (
-              <View style={{ padding: spacing.md, gap: spacing.sm }}>
-                <View style={styles.fieldRow}>
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Prénom</Text>
-                  <TextInput style={[styles.fieldInput, { color: colors.text, borderColor: colors.border, borderRadius: radius.sm }]} value={firstName} onChangeText={setFirstName} />
-                </View>
-                <View style={styles.fieldRow}>
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nom</Text>
-                  <TextInput style={[styles.fieldInput, { color: colors.text, borderColor: colors.border, borderRadius: radius.sm }]} value={lastName} onChangeText={setLastName} />
-                </View>
-                <View style={styles.fieldRow}>
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Téléphone</Text>
-                  <TextInput style={[styles.fieldInput, { color: colors.text, borderColor: colors.border, borderRadius: radius.sm }]} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                </View>
-                <Button variant="primary" size="md" fullWidth onPress={() => setEditing(false)}>Enregistrer</Button>
-              </View>
-            ) : (
-              <View style={{ padding: spacing.md }}>
-                {[{ label: 'Prénom', value: user?.firstName }, { label: 'Nom', value: user?.lastName }, { label: 'Email', value: user?.email }, { label: 'Téléphone', value: user?.phone }]
-                  .map(({ label, value }, i, arr) => (
-                    <View key={label}>
-                      <View style={[styles.fieldRow, { paddingVertical: spacing.sm }]}>
-                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
-                        <Text style={{ color: colors.text, fontSize: fontSize.body }}>{value ?? '—'}</Text>
-                      </View>
-                      {i < arr.length - 1 && <Divider />}
-                    </View>
-                  ))}
-              </View>
-            )}
-          </View>
-
-          {/* Addresses */}
-          <SectionTitle>Mes adresses</SectionTitle>
-          <View style={[styles.section, { backgroundColor: colors.card, borderRadius: radius.lg }]}>
-            {MOCK_ADDRESSES.map((addr, i) => (
-              <View key={addr.id}>
-                <View style={[styles.addrRow, { padding: spacing.md }]}>
-                  <Text style={{ fontSize: 20, marginRight: spacing.sm }}>📍</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text, fontWeight: '600', fontSize: fontSize.body }}>{addr.label}</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption }}>{addr.street}, {addr.city}</Text>
-                  </View>
-                  {addr.isDefault && <Text style={{ color: colors.primary, fontSize: fontSize.caption }}>Par défaut</Text>}
-                </View>
-                {i < MOCK_ADDRESSES.length - 1 && <Divider />}
-              </View>
-            ))}
-            <Divider />
-            <TouchableOpacity style={[styles.addrRow, { padding: spacing.md }]} accessibilityLabel="Ajouter une adresse">
-              <Text style={{ fontSize: 20, marginRight: spacing.sm }}>➕</Text>
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: fontSize.body }}>Ajouter une adresse</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Payment history */}
-          <SectionTitle>Historique paiements</SectionTitle>
-          <View style={[styles.section, { backgroundColor: colors.card, borderRadius: radius.lg }]}>
-            {MOCK_PAYMENTS.map((tx, i) => (
-              <View key={tx.id}>
-                <View style={[styles.txRow, { padding: spacing.md }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text, fontSize: fontSize.body, fontWeight: '500' }}>{tx.service}</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption }}>{tx.date}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: colors.text, fontWeight: '700' }}>{tx.amount} MAD</Text>
-                    <Text style={{ color: STATUS_COLOR[tx.status], fontSize: fontSize.caption }}>{STATUS_LABEL[tx.status]}</Text>
-                  </View>
-                </View>
-                {i < MOCK_PAYMENTS.length - 1 && <Divider />}
-              </View>
-            ))}
-          </View>
-
-          {/* Notifications */}
-          <SectionTitle>Notifications</SectionTitle>
-          <View style={[styles.section, { backgroundColor: colors.card, borderRadius: radius.lg }]}>
-            {[
-              { label: 'Réservations', value: notifBookings, setter: setNotifBookings },
-              { label: 'Messages', value: notifMessages, setter: setNotifMessages },
-              { label: 'Promotions', value: notifPromos, setter: setNotifPromos },
-            ].map(({ label, value, setter }, i, arr) => (
-              <View key={label}>
-                <View style={[styles.toggleRow, { padding: spacing.md }]}>
-                  <Text style={{ color: colors.text, fontSize: fontSize.body }}>{label}</Text>
-                  <Switch
-                    value={value}
-                    onValueChange={setter}
-                    trackColor={{ true: colors.primary, false: colors.border }}
-                    thumbColor={colors.white}
-                    accessibilityLabel={`Notifications ${label}`}
-                  />
-                </View>
-                {i < arr.length - 1 && <Divider />}
-              </View>
-            ))}
-          </View>
-
-          {/* Other links */}
-          <SectionTitle>Aide</SectionTitle>
-          <View style={[styles.section, { backgroundColor: colors.card, borderRadius: radius.lg }]}>
-            {['❓  Aide & Support', '📄  Conditions d\'utilisation', '🔒  Politique de confidentialité'].map((item, i, arr) => (
-              <View key={item}>
-                <TouchableOpacity style={[styles.menuRow, { padding: spacing.md }]} accessibilityLabel={item.replace(/^.+  /, '')}>
-                  <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.body }}>{item}</Text>
-                  <Text style={{ color: colors.textSecondary }}>›</Text>
-                </TouchableOpacity>
-                {i < arr.length - 1 && <Divider />}
-              </View>
-            ))}
-          </View>
-
-          <View style={{ marginTop: spacing.lg, marginBottom: spacing.xl }}>
-            <Button variant="danger" size="lg" fullWidth onPress={handleLogout}>
-              Se déconnecter
-            </Button>
-          </View>
+          )}
         </View>
+
+        {/* ── Mes adresses ── */}
+        <SectionTitle title="Mes adresses" colors={colors} fontSize={fontSize} spacing={spacing} />
+        <View style={[styles.card, { backgroundColor: colors.card, borderRadius: radius.lg, marginHorizontal: spacing.md, marginBottom: spacing.md }]}>
+          {MOCK_ADDRESSES.map((addr, i) => (
+            <View key={addr.id}>
+              <View style={[styles.row, { padding: spacing.md }]}>
+                <Text style={{ fontSize: 20, marginRight: spacing.sm }}>📍</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: fontSize.body }}>{addr.label}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption, marginTop: 2 }}>{addr.line}</Text>
+                </View>
+                <TouchableOpacity activeOpacity={0.7}>
+                  <Text style={{ color: colors.primary, fontSize: fontSize.caption }}>Modifier</Text>
+                </TouchableOpacity>
+              </View>
+              {i < MOCK_ADDRESSES.length - 1 && <Divider />}
+            </View>
+          ))}
+          <Divider />
+          <TouchableOpacity
+            style={[styles.row, { padding: spacing.md }]}
+            activeOpacity={0.7}
+            onPress={() => Alert.alert('Adresse', 'Fonctionnalité à venir.')}
+          >
+            <Text style={{ fontSize: 20, marginRight: spacing.sm }}>➕</Text>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: fontSize.body }}>
+              Ajouter une adresse
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Historique paiements ── */}
+        <SectionTitle title="Historique paiements" colors={colors} fontSize={fontSize} spacing={spacing} />
+        <View style={[styles.card, { backgroundColor: colors.card, borderRadius: radius.lg, marginHorizontal: spacing.md, marginBottom: spacing.md }]}>
+          {MOCK_TRANSACTIONS.map((tx, i) => (
+            <View key={tx.id}>
+              <View style={[styles.row, { padding: spacing.md, justifyContent: 'space-between' }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: fontSize.body }}>{tx.service}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption, marginTop: 2 }}>
+                    {new Date(tx.date).toLocaleDateString('fr-MA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.body }}>
+                    {tx.amount} MAD
+                  </Text>
+                  <View style={{ marginTop: 4 }}>
+                    <Badge
+                      label={tx.status === 'PAID' ? 'Payé' : 'En attente'}
+                      variant={tx.status === 'PAID' ? 'success' : 'warning'}
+                      size="sm"
+                    />
+                  </View>
+                </View>
+              </View>
+              {i < MOCK_TRANSACTIONS.length - 1 && <Divider />}
+            </View>
+          ))}
+        </View>
+
+        {/* ── Paramètres notifications ── */}
+        <SectionTitle title="Paramètres notifications" colors={colors} fontSize={fontSize} spacing={spacing} />
+        <View style={[styles.card, { backgroundColor: colors.card, borderRadius: radius.lg, marginHorizontal: spacing.md, marginBottom: spacing.md }]}>
+          <NotifToggle icon="📅" label="Réservations" value={notifBookings}   onChange={setNotifBookings}   colors={colors} fontSize={fontSize} spacing={spacing} />
+          <Divider />
+          <NotifToggle icon="💬" label="Messages"     value={notifMessages}   onChange={setNotifMessages}   colors={colors} fontSize={fontSize} spacing={spacing} />
+          <Divider />
+          <NotifToggle icon="🎁" label="Promotions"   value={notifPromotions} onChange={setNotifPromotions} colors={colors} fontSize={fontSize} spacing={spacing} />
+        </View>
+
+        {/* ── Support + Legal ── */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderRadius: radius.lg, marginHorizontal: spacing.md, marginBottom: spacing.md }]}>
+          <MenuRow icon="❓" label="Aide & Support"            onPress={() => Alert.alert('Support', 'Contactez-nous sur support@menalink.ma')}   colors={colors} fontSize={fontSize} spacing={spacing} />
+          <Divider />
+          <MenuRow icon="📄" label="Conditions d'utilisation"  onPress={() => Alert.alert("Conditions d'utilisation", 'Fonctionnalité à venir.')} colors={colors} fontSize={fontSize} spacing={spacing} />
+        </View>
+
+        {/* ── Logout ── */}
+        <View style={{ paddingHorizontal: spacing.md }}>
+          <Button variant="danger" size="lg" fullWidth onPress={handleLogout}>
+            Se déconnecter
+          </Button>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SectionTitle({ title, colors, fontSize, spacing }: any) {
+  return (
+    <Text style={{
+      color: colors.textSecondary,
+      fontSize: fontSize.caption,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginHorizontal: spacing.md + 4,
+      marginBottom: spacing.xs,
+      marginTop: spacing.lg,
+    }}>
+      {title}
+    </Text>
+  );
+}
+
+function NotifToggle({ icon, label, value, onChange, colors, fontSize, spacing }: any) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md }}>
+      <Text style={{ fontSize: 18, marginRight: spacing.sm }}>{icon}</Text>
+      <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.body }}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
+function MenuRow({ icon, label, onPress, colors, fontSize, spacing }: any) {
+  return (
+    <TouchableOpacity
+      style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md }}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={{ fontSize: 18, marginRight: spacing.sm }}>{icon}</Text>
+      <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.body }}>{label}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 18 }}>›</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { alignItems: 'center' },
-  cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-  name: { fontWeight: '700' },
-  section: { overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1 },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  fieldLabel: { fontSize: 13, width: 90 },
-  fieldInput: { flex: 1, borderWidth: 1, padding: 8, fontSize: 14 },
-  addrRow: { flexDirection: 'row', alignItems: 'center' },
-  txRow: { flexDirection: 'row', alignItems: 'center' },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  menuRow: { flexDirection: 'row', alignItems: 'center' },
+  container:     { flex: 1 },
+  profileHeader: { alignItems: 'center' },
+  fullName:      { fontWeight: '700' },
+  editBtn:       { borderWidth: 1.5, paddingHorizontal: 20, paddingVertical: 6 },
+  editActions:   { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 12 },
+  card: {
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  row:           { flexDirection: 'row', alignItems: 'center' },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
