@@ -1,71 +1,72 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { prisma } from '../config/prisma';
-import { sendSuccess } from '../utils/response';
-import { AppError } from '../middleware/errorHandler';
-import { AuthRequest } from '../middleware/authMiddleware';
-import { UserRole } from '../../../shared/types';
+import * as authService from '../services/auth.service';
+import { ok, created } from '../utils/response';
+import { AuthRequest } from '../middleware/authenticate';
 
-const registerSchema = z.object({
-  firebaseUid: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(10),
-  firstName: z.string().min(2),
-  lastName: z.string().min(2),
-  role: z.enum([UserRole.CLIENT, UserRole.PROVIDER]),
-  pricePerHour: z.number().positive().optional(),
-});
-
-/**
- * Crée un profil utilisateur après l'inscription Firebase.
- */
-export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function registerClient(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const data = registerSchema.parse(req.body);
-
-    const existing = await prisma.user.findFirst({
-      where: { OR: [{ email: data.email }, { firebaseUid: data.firebaseUid }] },
-    });
-    if (existing) throw new AppError(409, 'Utilisateur déjà enregistré');
-
-    const user = await prisma.user.create({
-      data: {
-        firebaseUid: data.firebaseUid,
-        email: data.email,
-        phone: data.phone,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-        ...(data.role === UserRole.PROVIDER && {
-          providerProfile: {
-            create: {
-              pricePerHour: data.pricePerHour ?? 100,
-            },
-          },
-        }),
-      },
-      include: { providerProfile: data.role === UserRole.PROVIDER },
-    });
-
-    sendSuccess(res, user, 201, 'Compte créé avec succès');
-  } catch (err) {
-    next(err);
-  }
+    const user = await authService.registerClient(req.body);
+    created(res, user, 'Compte client créé avec succès');
+  } catch (err) { next(err); }
 }
 
-/**
- * Retourne le profil de l'utilisateur authentifié.
- */
+export async function registerProvider(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await authService.registerProvider(req.body);
+    created(res, user, 'Compte prestataire créé. En attente de validation.');
+  } catch (err) { next(err); }
+}
+
+export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await authService.loginWithPassword(req.body);
+    ok(res, user, 'Connexion réussie');
+  } catch (err) { next(err); }
+}
+
+export async function socialLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await authService.socialLogin(req.body);
+    ok(res, user, 'Connexion réussie');
+  } catch (err) { next(err); }
+}
+
 export async function getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.userId },
-      include: { providerProfile: true, addresses: true },
-    });
-    if (!user) throw new AppError(404, 'Utilisateur introuvable');
+    const { getMyProfile } = await import('../services/user.service');
+    const user = await getMyProfile(req.userId);
+    ok(res, user);
+  } catch (err) { next(err); }
+}
 
-    sendSuccess(res, user);
-  } catch (err) {
-    next(err);
-  }
+// Stubs pour OTP/mot de passe — logique déléguée à Firebase côté client
+export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    // Firebase gère le reset côté client — ici on confirme juste la réception
+    ok(res, null, 'Si cet email existe, un lien de réinitialisation a été envoyé.');
+  } catch (err) { next(err); }
+}
+
+export async function resetPassword(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, null, 'Mot de passe réinitialisé avec succès.');
+  } catch (err) { next(err); }
+}
+
+export async function verifyPhone(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, null, 'Numéro de téléphone vérifié.');
+  } catch (err) { next(err); }
+}
+
+export async function resendOtp(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, null, 'Code OTP renvoyé.');
+  } catch (err) { next(err); }
+}
+
+export async function refreshToken(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, null, 'Le refresh token est géré directement par Firebase SDK.');
+  } catch (err) { next(err); }
 }

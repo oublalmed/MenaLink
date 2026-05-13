@@ -1,44 +1,26 @@
 import { Response, NextFunction } from 'express';
-import { prisma } from '../config/prisma';
-import { sendSuccess } from '../utils/response';
-import { AuthRequest } from '../middleware/authMiddleware';
+import * as notifService from '../services/notification.service';
+import { ok, paginated, buildPagination } from '../utils/response';
+import { AuthRequest } from '../middleware/authenticate';
 
-/** Retourne les notifications de l'utilisateur connecté. */
 export async function getNotifications(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const notifications = await prisma.notification.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-    sendSuccess(res, notifications);
-  } catch (err) {
-    next(err);
-  }
+    const { page, limit } = req.pagination;
+    const { items, total } = await notifService.getNotifications(req.userId, page, limit);
+    paginated(res, items, buildPagination(total, page, limit));
+  } catch (err) { next(err); }
 }
 
-/** Marque une notification comme lue. */
 export async function markAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    await prisma.notification.updateMany({
-      where: { id: req.params.id, userId: req.userId },
-      data: { isRead: true },
-    });
-    sendSuccess(res, null, 200);
-  } catch (err) {
-    next(err);
-  }
+    await notifService.markAsRead(req.params.id, req.userId);
+    ok(res, null, 'Notification marquée comme lue');
+  } catch (err) { next(err); }
 }
 
-/** Marque toutes les notifications comme lues. */
 export async function markAllAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    await prisma.notification.updateMany({
-      where: { userId: req.userId, isRead: false },
-      data: { isRead: true },
-    });
-    sendSuccess(res, null, 200);
-  } catch (err) {
-    next(err);
-  }
+    await notifService.markAllAsRead(req.userId);
+    ok(res, null, 'Toutes les notifications ont été lues');
+  } catch (err) { next(err); }
 }

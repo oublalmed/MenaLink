@@ -1,59 +1,79 @@
 import { prisma } from '../config/prisma';
-import { firebaseMessaging, firebaseDB } from '../config/firebase';
-import { BookingStatus, NotificationType } from '../../../shared/types';
+import { firebaseMessaging } from '../config/firebase';
+import { AppError, ErrorCode } from '../utils/errors';
 
-const STATUS_MESSAGES: Record<BookingStatus, { title: string; body: string }> = {
-  [BookingStatus.PENDING]: { title: 'Nouvelle réservation', body: 'Une réservation vous a été assignée.' },
-  [BookingStatus.CONFIRMED]: { title: 'Réservation confirmée', body: 'Votre réservation a été confirmée.' },
-  [BookingStatus.IN_PROGRESS]: { title: 'Prestation en cours', body: 'La prestation a démarré.' },
-  [BookingStatus.COMPLETED]: { title: 'Prestation terminée', body: 'La prestation est terminée. Laissez un avis !' },
-  [BookingStatus.CANCELLED]: { title: 'Réservation annulée', body: 'Votre réservation a été annulée.' },
-  [BookingStatus.DISPUTED]: { title: 'Litige ouvert', body: 'Un litige a été ouvert sur votre réservation.' },
-};
+interface PushPayload {
+  title: string;
+  body:  string;
+  data?: Record<string, string>;
+}
 
 /**
- * Envoie une notification push et met à jour Firebase Realtime DB lors d'un changement de statut.
+ * Envoie une notification push FCM et la persiste en base.
+ * Non bloquant : les erreurs FCM sont loggées sans faire échouer l'appelant.
  */
-export async function notifyBookingUpdate(bookingId: string, status: BookingStatus): Promise<void> {
+export async function sendPushNotification(userId: string, payload: PushPayload): Promise<void> {
   try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: {
-        client: { select: { id: true, fcmToken: true } },
-        provider: { include: { user: { select: { id: true, fcmToken: true } } } },
-      },
-    });
-
-    if (!booking) return;
-
-    const msg = STATUS_MESSAGES[status];
-    const targetUser = status === BookingStatus.PENDING ? booking.provider.user : booking.client;
-
-    // Mise à jour Firebase Realtime DB
-    await firebaseDB()
-      .ref(`bookings/${bookingId}`)
-      .set({ bookingId, status, updatedAt: Date.now() });
-
-    // Notification dans la base SQL
+    // Persiste la notification
     await prisma.notification.create({
       data: {
-        userId: targetUser.id,
-        type: `BOOKING_${status}`,
-        title: msg.title,
-        body: msg.body,
-        data: { bookingId },
+        userId,
+        title:  payload.title,
+        body:   payload.body,
+        type:   payload.data?.type ?? 'GENERIC',
+        data:   (payload.data ?? null) as never,
+        isRead: false,
       },
     });
 
-    // Push notification FCM
-    if (targetUser.fcmToken) {
+    // Récupère le token FCM
+    const user = await prisma.user.findUnique({
+      where:  { id: userId },
+      select: { fcmToken: true },
+    });
+
+    if (user?.fcmToken) {
       await firebaseMessaging().send({
-        token: targetUser.fcmToken,
-        notification: { title: msg.title, body: msg.body },
-        data: { bookingId, status, type: NotificationType.BOOKING_NEW },
+        token:        user.fcmToken,
+        notification: { title: payload.title, body: payload.body },
+        data:         payload.data,
+        android: { priority: 'high' },
+        apns:    { payload: { aps: { sound: 'default' } } },
       });
     }
   } catch (err) {
-    console.error('[notifyBookingUpdate] Erreur notification:', err);
+    console.warn('[sendPushNotification] Non-fatal:', err);
   }
+}
+
+/** Liste des notifications d'un utilisateur. */
+export async function getNotifications(userId: string, page: number, limit: number) {
+  const skip = (page - 1) * limit;
+  const [items, total] = await prisma.$transaction([
+    prisma.notification.findMany({
+      where:   { userId },
+      skip,
+      take:    limit,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.notification.count({ where: { userId } }),
+  ]);
+  return { items, total };
+}
+
+/** Marque une notification comme lue. */
+export async function markAsRead(notifId: string, userId: string): Promise<void> {
+  const updated = await prisma.notification.updateMany({
+    where: { id: notifId, userId },
+    data:  { isRead: true },
+  });
+  if (updated.count === 0) throw AppError.notFound(ErrorCode.NOT_FOUND, 'Notification introuvable');
+}
+
+/** Marque toutes les notifications comme lues. */
+export async function markAllAsRead(userId: string): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data:  { isRead: true },
+  });
 }

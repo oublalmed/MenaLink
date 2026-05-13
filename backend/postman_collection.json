@@ -1,0 +1,475 @@
+{
+  "info": {
+    "name": "MenaLink API v1",
+    "_postman_id": "menalink-api-v1",
+    "description": "Collection complète de l'API MenaLink — services de ménage à domicile",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BASE_URL",      "value": "http://localhost:4000/api/v1" },
+    { "key": "CLIENT_TOKEN",  "value": "" },
+    { "key": "PROVIDER_TOKEN","value": "" },
+    { "key": "ADMIN_TOKEN",   "value": "" },
+    { "key": "BOOKING_ID",    "value": "" },
+    { "key": "PROVIDER_ID",   "value": "" },
+    { "key": "REVIEW_ID",     "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{CLIENT_TOKEN}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Inscription client",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/register/client",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"client@test.ma\",\n  \"phone\": \"+212661100001\",\n  \"password\": \"Client@2024!\",\n  \"firstName\": \"Samira\",\n  \"lastName\": \"Test\"\n}" }
+          }
+        },
+        {
+          "name": "Inscription prestataire",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/register/provider",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"provider@test.ma\",\n  \"phone\": \"+212671200001\",\n  \"password\": \"Provider@2024!\",\n  \"firstName\": \"Khadija\",\n  \"lastName\": \"Test\",\n  \"hourlyRateMin\": 60,\n  \"hourlyRateMax\": 90,\n  \"bio\": \"Prestataire expérimentée\"\n}" }
+          }
+        },
+        {
+          "name": "Connexion (email/mdp)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var json = pm.response.json();",
+            "if(json.success) pm.collectionVariables.set('CLIENT_TOKEN', json.data.token || '');"
+          ] } }],
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"samira.elidrissi@gmail.com\",\n  \"password\": \"Client@2024!\"\n}" }
+          }
+        },
+        {
+          "name": "Social Login (Firebase token)",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/social-login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"firebaseToken\": \"FIREBASE_ID_TOKEN_HERE\",\n  \"role\": \"CLIENT\"\n}" }
+          }
+        },
+        {
+          "name": "Mon profil (GET /me)",
+          "request": {
+            "method": "GET", "url": "{{BASE_URL}}/auth/me",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{CLIENT_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "Mot de passe oublié",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/forgot-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"email\": \"client@test.ma\" }" }
+          }
+        },
+        {
+          "name": "Réinitialiser mdp",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/reset-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"token\": \"RESET_TOKEN\", \"password\": \"NewPass@2024!\" }" }
+          }
+        },
+        {
+          "name": "Vérifier téléphone (OTP)",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/auth/verify-phone",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"phone\": \"+212661100001\", \"otp\": \"123456\" }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Users",
+      "item": [
+        {
+          "name": "Mon profil",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/users/me" }
+        },
+        {
+          "name": "Modifier mon profil",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/users/me",
+            "body": { "mode": "raw", "raw": "{ \"firstName\": \"Samira\", \"lastName\": \"Updated\" }" }
+          }
+        },
+        {
+          "name": "Mettre à jour token FCM",
+          "request": {
+            "method": "PATCH", "url": "{{BASE_URL}}/users/me/fcm",
+            "body": { "mode": "raw", "raw": "{ \"fcmToken\": \"FCM_TOKEN_HERE\" }" }
+          }
+        },
+        {
+          "name": "Supprimer mon compte",
+          "request": { "method": "DELETE", "url": "{{BASE_URL}}/users/me" }
+        }
+      ]
+    },
+    {
+      "name": "🧹 Providers",
+      "item": [
+        {
+          "name": "Liste prestataires",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/providers?page=1&limit=10&service=CLEANING",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "service", "value": "CLEANING" },
+                { "key": "priceMin", "value": "50", "disabled": true },
+                { "key": "priceMax", "value": "120", "disabled": true },
+                { "key": "rating", "value": "4", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Prestataires proches (géo)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/providers/nearby?lat=33.5992&lng=-7.6328&radiusKm=15&service=CLEANING",
+              "query": [
+                { "key": "lat",       "value": "33.5992" },
+                { "key": "lng",       "value": "-7.6328" },
+                { "key": "radiusKm",  "value": "15" },
+                { "key": "service",   "value": "CLEANING" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fiche prestataire",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/providers/{{PROVIDER_ID}}" }
+        },
+        {
+          "name": "Disponibilités prestataire",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/providers/{{PROVIDER_ID}}/availability" }
+        },
+        {
+          "name": "Modifier profil prestataire",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/providers/profile",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"bio\": \"Mise à jour bio\",\n  \"hourlyRateMin\": 65,\n  \"hourlyRateMax\": 95,\n  \"isAvailable\": true\n}" }
+          }
+        },
+        {
+          "name": "Mettre à jour position GPS",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/providers/location",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] },
+            "body": { "mode": "raw", "raw": "{ \"latitude\": 33.5992, \"longitude\": -7.6328, \"isOnline\": true }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Bookings",
+      "item": [
+        {
+          "name": "Calculer devis",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/bookings/quote?providerId={{PROVIDER_ID}}&serviceType=CLEANING&durationHours=3",
+              "query": [
+                { "key": "providerId",    "value": "{{PROVIDER_ID}}" },
+                { "key": "serviceType",   "value": "CLEANING" },
+                { "key": "durationHours", "value": "3" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Créer réservation",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var json = pm.response.json();",
+            "if(json.success) pm.collectionVariables.set('BOOKING_ID', json.data.id);"
+          ] } }],
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/bookings",
+            "body": { "mode": "raw", "raw": "{\n  \"providerId\": \"{{PROVIDER_ID}}\",\n  \"addressId\": \"ADDRESS_ID_HERE\",\n  \"serviceType\": \"CLEANING\",\n  \"scheduledDate\": \"2025-12-15\",\n  \"scheduledTime\": \"09:00\",\n  \"durationHours\": 3,\n  \"paymentMethod\": \"ONLINE\",\n  \"clientNotes\": \"Salon et cuisine en priorité\"\n}" }
+          }
+        },
+        {
+          "name": "Mes réservations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/bookings?page=1&limit=10",
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "CONFIRMED", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Détails réservation",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}" }
+        },
+        {
+          "name": "[Provider] Confirmer réservation",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}/confirm",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "[Provider] Refuser réservation",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}/decline",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] },
+            "body": { "mode": "raw", "raw": "{ \"reason\": \"Indisponible ce jour-là\" }" }
+          }
+        },
+        {
+          "name": "[Provider] Démarrer mission",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}/start",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "[Provider] Terminer mission",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}/complete",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "[Client] Annuler réservation",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/bookings/{{BOOKING_ID}}/cancel",
+            "body": { "mode": "raw", "raw": "{ \"reason\": \"Changement de programme\" }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Payments",
+      "item": [
+        {
+          "name": "Initier paiement YouCan Pay",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/payments/initiate",
+            "body": { "mode": "raw", "raw": "{ \"bookingId\": \"{{BOOKING_ID}}\" }" }
+          }
+        },
+        {
+          "name": "Historique transactions",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/payments/history?page=1&limit=10" }
+        },
+        {
+          "name": "[Admin] Rembourser réservation",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/payments/refund/{{BOOKING_ID}}",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{ADMIN_TOKEN}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Earnings (Prestataire)",
+      "item": [
+        {
+          "name": "Résumé gains (mensuel)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/earnings/summary?period=month", "query": [{ "key": "period", "value": "month" }] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "Historique transactions prestataire",
+          "request": {
+            "method": "GET", "url": "{{BASE_URL}}/earnings/transactions?page=1",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        },
+        {
+          "name": "Demander un virement",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/earnings/withdraw",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 500,\n  \"bankAccountRib\": \"MA64011519000001205000534921\"\n}" }
+          }
+        },
+        {
+          "name": "Historique virements",
+          "request": {
+            "method": "GET", "url": "{{BASE_URL}}/earnings/withdrawals",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{PROVIDER_TOKEN}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⭐ Reviews",
+      "item": [
+        {
+          "name": "Créer un avis",
+          "request": {
+            "method": "POST", "url": "{{BASE_URL}}/reviews",
+            "body": { "mode": "raw", "raw": "{\n  \"bookingId\": \"{{BOOKING_ID}}\",\n  \"rating\": 5,\n  \"comment\": \"Excellent travail, très propre !\"\n}" }
+          }
+        },
+        {
+          "name": "Avis d'un prestataire",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/reviews/provider/{{PROVIDER_ID}}?page=1&limit=10&sort=recent",
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sort",  "value": "recent" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Admin] Supprimer un avis",
+          "request": {
+            "method": "DELETE", "url": "{{BASE_URL}}/reviews/{{REVIEW_ID}}",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{ADMIN_TOKEN}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Mes notifications",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/notifications?page=1&limit=20" }
+        },
+        {
+          "name": "Marquer comme lue",
+          "request": { "method": "PUT", "url": "{{BASE_URL}}/notifications/NOTIF_ID/read" }
+        },
+        {
+          "name": "Tout marquer comme lu",
+          "request": { "method": "PUT", "url": "{{BASE_URL}}/notifications/read-all" }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{ADMIN_TOKEN}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Dashboard KPIs",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/admin/dashboard" }
+        },
+        {
+          "name": "Liste utilisateurs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/admin/users?page=1&limit=20",
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20" },
+                { "key": "role",   "value": "CLIENT",  "disabled": true },
+                { "key": "status", "value": "ACTIVE",  "disabled": true },
+                { "key": "search", "value": "samira",  "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Activer / Suspendre un user",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/admin/users/USER_ID/status",
+            "body": { "mode": "raw", "raw": "{ \"status\": \"SUSPENDED\", \"reason\": \"Non-respect des CGU\" }" }
+          }
+        },
+        {
+          "name": "Prestataires en attente de vérification",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/admin/providers/pending?page=1&limit=10" }
+        },
+        {
+          "name": "Approuver prestataire",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/admin/providers/{{PROVIDER_ID}}/verify",
+            "body": { "mode": "raw", "raw": "{ \"approved\": true }" }
+          }
+        },
+        {
+          "name": "Rejeter prestataire",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/admin/providers/{{PROVIDER_ID}}/verify",
+            "body": { "mode": "raw", "raw": "{ \"approved\": false, \"reason\": \"Documents incomplets\" }" }
+          }
+        },
+        {
+          "name": "Toutes les réservations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/admin/bookings?page=1&limit=20",
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20" },
+                { "key": "status", "value": "COMPLETED", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Toutes les transactions",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/admin/transactions?page=1&limit=20" }
+        },
+        {
+          "name": "Liste des litiges",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/admin/disputes?page=1&limit=10" }
+        },
+        {
+          "name": "Résoudre un litige",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/admin/disputes/DISPUTE_ID",
+            "body": { "mode": "raw", "raw": "{\n  \"resolution\": \"Remboursement de 50% accordé suite à l'examen du dossier.\",\n  \"status\": \"RESOLVED\"\n}" }
+          }
+        },
+        {
+          "name": "Paramètres application",
+          "request": { "method": "GET", "url": "{{BASE_URL}}/admin/settings" }
+        },
+        {
+          "name": "Modifier un paramètre",
+          "request": {
+            "method": "PUT", "url": "{{BASE_URL}}/admin/settings/commission_rate",
+            "body": { "mode": "raw", "raw": "{ \"value\": \"0.18\", \"description\": \"Commission portée à 18%\" }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": { "method": "GET", "url": "http://localhost:4000/health" }
+        }
+      ]
+    }
+  ]
+}

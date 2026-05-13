@@ -1,11 +1,15 @@
 import { Router } from 'express';
-import { createReview, getProviderReviews } from '../controllers/review.controller';
-import { authenticate, requireRole } from '../middleware/authMiddleware';
-import { UserRole } from '../../../shared/types';
+import * as ctrl from '../controllers/review.controller';
+import { authenticate } from '../middleware/authenticate';
+import { authorize } from '../middleware/authorize';
+import { validateBody, validateQuery } from '../middleware/validate';
+import { UserRole } from '@prisma/client';
+import { createReviewSchema, reviewQuerySchema } from '../schemas/review.schemas';
 
 const router = Router();
 
-router.post('/', authenticate, requireRole(UserRole.CLIENT), createReview);
-router.get('/provider/:providerId', getProviderReviews);
+router.post('/',              authenticate, authorize(UserRole.CLIENT), validateBody(createReviewSchema), ctrl.createReview);
+router.get( '/provider/:id',  validateQuery(reviewQuerySchema),         ctrl.getProviderReviews);
+router.delete('/:id',         authenticate, authorize(UserRole.ADMIN),  ctrl.deleteReview);
 
 export default router;

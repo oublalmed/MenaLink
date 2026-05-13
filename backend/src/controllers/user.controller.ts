@@ -1,77 +1,50 @@
 import { Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { prisma } from '../config/prisma';
-import { sendSuccess } from '../utils/response';
-import { AuthRequest } from '../middleware/authMiddleware';
+import * as userService from '../services/user.service';
+import { ok } from '../utils/response';
+import { AuthRequest } from '../middleware/authenticate';
+import { AppError, ErrorCode } from '../utils/errors';
 
-const updateProfileSchema = z.object({
-  firstName: z.string().min(2).optional(),
-  lastName: z.string().min(2).optional(),
-  phone: z.string().min(10).optional(),
-  avatar: z.string().url().optional(),
-});
-
-const addressSchema = z.object({
-  label: z.string().min(2),
-  street: z.string().min(5),
-  city: z.string().min(2),
-  postalCode: z.string().min(4),
-  country: z.string().default('MA'),
-  lat: z.number(),
-  lng: z.number(),
-  isDefault: z.boolean().default(false),
-});
-
-/** Met à jour le profil de l'utilisateur connecté. */
-export async function updateProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const data = updateProfileSchema.parse(req.body);
-    const user = await prisma.user.update({ where: { id: req.userId }, data });
-    sendSuccess(res, user, 200, 'Profil mis à jour');
-  } catch (err) {
-    next(err);
-  }
+    const user = await userService.getMyProfile(req.userId);
+    ok(res, user);
+  } catch (err) { next(err); }
 }
 
-/** Ajoute une adresse à l'utilisateur connecté. */
-export async function addAddress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const data = addressSchema.parse(req.body);
-
-    if (data.isDefault) {
-      await prisma.address.updateMany({
-        where: { userId: req.userId },
-        data: { isDefault: false },
-      });
-    }
-
-    const address = await prisma.address.create({
-      data: { ...data, userId: req.userId! },
-    });
-
-    sendSuccess(res, address, 201);
-  } catch (err) {
-    next(err);
-  }
+    const user = await userService.updateMyProfile(req.userId, req.body);
+    ok(res, user, 'Profil mis à jour');
+  } catch (err) { next(err); }
 }
 
-/** Retourne les adresses de l'utilisateur connecté. */
-export async function getAddresses(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateAvatar(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const addresses = await prisma.address.findMany({ where: { userId: req.userId } });
-    sendSuccess(res, addresses);
-  } catch (err) {
-    next(err);
-  }
+    if (!req.file) throw AppError.badRequest(ErrorCode.VALIDATION_ERROR, 'Aucun fichier fourni');
+    // Dans un vrai environnement, uploader vers S3/Cloudinary et retourner l'URL
+    const avatarUrl = `https://storage.menalink.ma/avatars/${req.userId}_${Date.now()}.jpg`;
+    const user = await userService.updateAvatar(req.userId, avatarUrl);
+    ok(res, user, 'Photo de profil mise à jour');
+  } catch (err) { next(err); }
 }
 
-/** Met à jour le token FCM de l'utilisateur pour les push notifications. */
+export async function deleteMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await userService.deleteMyAccount(req.userId);
+    ok(res, null, 'Compte supprimé');
+  } catch (err) { next(err); }
+}
+
+export async function getUserById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    ok(res, user);
+  } catch (err) { next(err); }
+}
+
 export async function updateFcmToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { fcmToken } = z.object({ fcmToken: z.string().min(1) }).parse(req.body);
-    await prisma.user.update({ where: { id: req.userId }, data: { fcmToken } });
-    sendSuccess(res, null, 200, 'Token FCM mis à jour');
-  } catch (err) {
-    next(err);
-  }
+    await userService.updateFcmToken(req.userId, req.body.fcmToken as string);
+    ok(res, null, 'Token FCM mis à jour');
+  } catch (err) { next(err); }
 }

@@ -1,12 +1,28 @@
 import { Router } from 'express';
-import { getProviders, getProviderById, updateProviderProfile } from '../controllers/provider.controller';
-import { authenticate, requireRole } from '../middleware/authMiddleware';
-import { UserRole } from '../../../shared/types';
+import * as ctrl from '../controllers/provider.controller';
+import { authenticate } from '../middleware/authenticate';
+import { authorize } from '../middleware/authorize';
+import { validateBody, validateQuery } from '../middleware/validate';
+import { uploadMultiple } from '../middleware/upload';
+import { UserRole } from '@prisma/client';
+import {
+  providerListQuerySchema, nearbyQuerySchema,
+  updateProviderSchema, updateLocationSchema,
+} from '../schemas/provider.schemas';
+import { z } from 'zod';
 
 const router = Router();
 
-router.get('/', getProviders);
-router.get('/:id', getProviderById);
-router.put('/profile', authenticate, requireRole(UserRole.PROVIDER), updateProviderProfile);
+// Routes publiques
+router.get( '/',          validateQuery(providerListQuerySchema), ctrl.listProviders);
+router.get( '/nearby',    validateQuery(nearbyQuerySchema),       ctrl.getNearbyProviders);
+router.get( '/:id',                                               ctrl.getProviderById);
+router.get( '/:id/availability',                                  ctrl.getProviderAvailability);
+
+// Routes prestataire authentifié
+router.put( '/profile',       authenticate, authorize(UserRole.PROVIDER), validateBody(updateProviderSchema),  ctrl.updateProviderProfile);
+router.put( '/availability',  authenticate, authorize(UserRole.PROVIDER), validateBody(z.object({ isAvailable: z.boolean() })), ctrl.updateAvailability);
+router.put( '/location',      authenticate, authorize(UserRole.PROVIDER), validateBody(updateLocationSchema),  ctrl.updateLocation);
+router.post('/documents',     authenticate, authorize(UserRole.PROVIDER), uploadMultiple,                      ctrl.uploadDocuments);
 
 export default router;

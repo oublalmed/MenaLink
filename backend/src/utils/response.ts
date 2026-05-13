@@ -1,30 +1,38 @@
 import { Response } from 'express';
 
-/**
- * Envoie une réponse JSON normalisée.
- */
-export function sendSuccess<T>(res: Response, data: T, statusCode = 200, message?: string): void {
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** Réponse succès standard. */
+export function ok<T>(res: Response, data: T, message?: string, statusCode = 200): void {
   res.status(statusCode).json({ success: true, data, ...(message && { message }) });
 }
 
-/**
- * Envoie une réponse paginée normalisée.
- */
-export function sendPaginated<T>(
+/** Réponse créée (201). */
+export function created<T>(res: Response, data: T, message?: string): void {
+  ok(res, data, message, 201);
+}
+
+/** Réponse paginée standard. */
+export function paginated<T>(
   res: Response,
   items: T[],
-  total: number,
-  page: number,
-  limit: number,
+  meta: PaginationMeta,
+  message?: string,
 ): void {
   res.status(200).json({
     success: true,
-    data: {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
+    data: items,
+    pagination: meta,
+    ...(message && { message }),
   });
+}
+
+/** Calcule les métadonnées de pagination. */
+export function buildPagination(total: number, page: number, limit: number): PaginationMeta {
+  return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }
