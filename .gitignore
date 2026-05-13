@@ -31,8 +31,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Prisma
-backend/prisma/migrations/
+# Prisma — migrations versionnées (ne pas ignorer)
 
 # Expo
 mobile/.expo/
