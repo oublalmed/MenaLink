@@ -7,6 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "storybook": "storybook start",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write src/**/*.{ts,tsx}",
     "type-check": "tsc --noEmit"
@@ -40,6 +41,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@storybook/addon-ondevice-actions": "^7.6.0",
+    "@storybook/addon-ondevice-controls": "^7.6.0",
+    "@storybook/react-native": "^7.6.0",
     "@types/react": "~18.2.55",
     "@types/react-native": "~0.73.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
