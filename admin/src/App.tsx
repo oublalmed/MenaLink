@@ -8,7 +8,10 @@ import DashboardPage from './pages/DashboardPage';
 import BookingsPage from './pages/BookingsPage';
 import UsersPage from './pages/UsersPage';
 import ProvidersPage from './pages/ProvidersPage';
-import ServicesPage from './pages/ServicesPage';
+import TransactionsPage from './pages/TransactionsPage';
+import DisputesPage from './pages/DisputesPage';
+import WithdrawalsPage from './pages/WithdrawalsPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App(): React.JSX.Element {
   const { isAuthenticated, isInitialized } = useAdminAuth();
@@ -25,15 +28,15 @@ export default function App(): React.JSX.Element {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route
-          path="/"
-          element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}
-        >
+        <Route path="/" element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}>
           <Route index element={<DashboardPage />} />
           <Route path="bookings" element={<BookingsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="providers" element={<ProvidersPage />} />
-          <Route path="services" element={<ServicesPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="disputes" element={<DisputesPage />} />
+          <Route path="withdrawals" element={<WithdrawalsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -29,8 +29,12 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   ClientTabs: NavigatorScreenParams<ClientTabsParamList>;
   ProviderTabs: NavigatorScreenParams<ProviderTabsParamList>;
-  BookingDetail: { bookingId: string };
+  // Client modals / stack screens
   ProviderDetail: { providerId: string };
-  Payment: { bookingId: string; amount: number };
-  Chat: { bookingId: string; participantName: string };
+  Booking: { providerId: string; providerName: string; hourlyRateMin: number };
+  BookingDetail: { bookingId: string };
+  LiveTracking: { bookingId: string };
+  Chat: { bookingId: string; participantName: string; participantId: string; participantAvatarUrl?: string };
+  Review: { bookingId: string; providerName: string; providerAvatarUrl?: string };
+  Payment: { bookingId: string; amount: number; paymentUrl: string };
 };
