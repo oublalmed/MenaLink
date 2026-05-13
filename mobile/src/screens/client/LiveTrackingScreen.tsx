@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getDatabase, onValue, ref } from 'firebase/database';
-import { firebaseApp } from '../../services/firebase';
+import { firebaseDatabase } from '../../services/firebase';
 import { useTheme } from '../../theme';
-import { Avatar, Badge, LoadingSpinner } from '../../components/atoms';
+import { Avatar, LoadingSpinner } from '../../components/atoms';
 import { useBooking } from '../../hooks/api';
-import { RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList } from '../../navigation/types';
 
 // Graceful import of react-native-maps
 let MapView: any = null;
@@ -24,7 +24,7 @@ try {
   MapView = Maps.default;
   Marker = Maps.Marker;
 } catch {
-  // maps not available
+  // maps not available — fallback UI will be used
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LiveTracking'>;
@@ -34,7 +34,7 @@ interface ProviderLocation {
   longitude: number;
 }
 
-// Haversine distance in km
+/** Haversine great-circle distance in km */
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -47,7 +47,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Mock client location (Casablanca centre)
+// Mock client coords — Casablanca city centre
 const CLIENT_COORDS = { latitude: 33.5731, longitude: -7.5898 };
 
 export function LiveTrackingScreen({ route, navigation }: Props) {
@@ -59,16 +59,19 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const etaIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const db = getDatabase(firebaseApp);
-
   const computeEta = useCallback((loc: ProviderLocation) => {
-    const km = haversineKm(loc.latitude, loc.longitude, CLIENT_COORDS.latitude, CLIENT_COORDS.longitude);
+    const km = haversineKm(
+      loc.latitude,
+      loc.longitude,
+      CLIENT_COORDS.latitude,
+      CLIENT_COORDS.longitude,
+    );
     // Assume ~30 km/h average urban speed
     setEtaMinutes(Math.max(1, Math.round((km / 30) * 60)));
   }, []);
 
   useEffect(() => {
-    const locationRef = ref(db, `bookings/${bookingId}/provider_location`);
+    const locationRef = ref(firebaseDatabase, `bookings/${bookingId}/provider_location`);
     const unsubscribe = onValue(locationRef, (snapshot) => {
       const val = snapshot.val() as ProviderLocation | null;
       if (val) {
@@ -77,7 +80,7 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
       }
     });
 
-    // Refresh ETA every 30s even without location update
+    // Refresh ETA every 30 s even without a new Firebase push
     etaIntervalRef.current = setInterval(() => {
       setProviderLocation((prev) => {
         if (prev) computeEta(prev);
@@ -89,12 +92,12 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
       unsubscribe();
       if (etaIntervalRef.current) clearInterval(etaIntervalRef.current);
     };
-  }, [bookingId, computeEta, db]);
+  }, [bookingId, computeEta]);
 
   const handleCall = useCallback(() => {
     Alert.alert('Appeler le prestataire', 'Voulez-vous appeler le prestataire ?', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Appeler', onPress: () => Linking.openURL('tel:+212600000000') },
+      { text: 'Appeler', onPress: () => void Linking.openURL('tel:+212600000000') },
     ]);
   }, []);
 
@@ -113,9 +116,12 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
     longitudeDelta: 0.05,
   };
 
+  const providerFirstName = booking.providerName.split(' ')[0] ?? '';
+  const providerLastName  = booking.providerName.split(' ')[1] ?? '';
+
   return (
     <View style={styles.container}>
-      {/* Map or fallback */}
+      {/* Map or graceful fallback */}
       {MapView != null ? (
         <MapView style={styles.map} initialRegion={mapRegion} showsUserLocation={false}>
           <Marker coordinate={CLIENT_COORDS} title="Votre adresse">
@@ -129,12 +135,12 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
         </MapView>
       ) : (
         <View style={[styles.mapFallback, { backgroundColor: colors.lightGray }]}>
-          <Text style={{ fontSize: 48 }}>🗺️</Text>
-          <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.h3, marginTop: spacing.md }}>
+          <Text style={{ fontSize: 56 }}>🗺️</Text>
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.h2, marginTop: spacing.md }}>
             {booking.providerName}
           </Text>
-          <View style={[styles.statusPill, { backgroundColor: colors.primary, borderRadius: radius.full, marginTop: spacing.sm }]}>
-            <Text style={{ color: colors.white, fontSize: fontSize.caption, fontWeight: '600', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }}>
+          <View style={[styles.statusPill, { backgroundColor: colors.primary, borderRadius: radius.full, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}>
+            <Text style={{ color: colors.white, fontSize: fontSize.caption, fontWeight: '600' }}>
               En route vers votre adresse
             </Text>
           </View>
@@ -146,21 +152,27 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      {/* Header overlay */}
+      {/* Floating header overlay */}
       <SafeAreaView style={styles.headerOverlay} pointerEvents="box-none">
         <View style={[styles.headerRow, { margin: spacing.md }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={[styles.headerButton, { backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.full }]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.full }]}
           >
             <Text style={{ color: '#fff', fontSize: 22, lineHeight: 28 }}>‹</Text>
           </TouchableOpacity>
-          <View style={[styles.headerCenter, { backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.body }}>{booking.providerName}</Text>
+
+          <View style={[styles.namePill, { backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.body }}>
+              {booking.providerName}
+            </Text>
           </View>
+
           {etaMinutes != null && (
-            <View style={[styles.etaBadge, { backgroundColor: colors.success, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.caption }}>~{etaMinutes} min</Text>
+            <View style={[styles.etaPill, { backgroundColor: colors.success, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.caption }}>
+                ~{etaMinutes} min
+              </Text>
             </View>
           )}
         </View>
@@ -170,19 +182,22 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
       <View style={[styles.bottomSheet, { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg }]}>
         <View style={[styles.row, { marginBottom: spacing.md }]}>
           <Avatar
-            firstName={booking.providerName.split(' ')[0]}
-            lastName={booking.providerName.split(' ')[1] ?? ''}
+            firstName={providerFirstName}
+            lastName={providerLastName}
             uri={booking.providerAvatarUrl}
             size="md"
             statusBadge="online"
           />
           <View style={{ marginLeft: spacing.md, flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.body }}>{booking.providerName}</Text>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: fontSize.body }}>
+              {booking.providerName}
+            </Text>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.caption, marginTop: 2 }}>
               En route vers votre adresse
             </Text>
           </View>
         </View>
+
         <View style={styles.row}>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.success, borderRadius: radius.lg, flex: 1, marginRight: spacing.sm }]}
@@ -191,9 +206,15 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.body }}>📞 Appeler</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.primary, borderRadius: radius.lg, flex: 1, marginLeft: spacing.sm }]}
-            onPress={() => navigation.navigate('Chat', { bookingId, participantName: booking.providerName, participantId: booking.providerId, participantAvatarUrl: booking.providerAvatarUrl })}
+            onPress={() => navigation.navigate('Chat', {
+              bookingId,
+              participantName: booking.providerName,
+              participantId: booking.providerId,
+              participantAvatarUrl: booking.providerAvatarUrl,
+            })}
             activeOpacity={0.8}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: fontSize.body }}>💬 Message</Text>
@@ -205,18 +226,25 @@ export function LiveTrackingScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  map: { flex: 1 },
-  mapFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container:     { flex: 1 },
+  center:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  map:           { flex: 1 },
+  mapFallback:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
   headerOverlay: { position: 'absolute', top: 0, left: 0, right: 0 },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  headerCenter: { flex: 1 },
-  etaBadge: { marginLeft: 8 },
-  bottomSheet: { height: 160, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: -4 }, elevation: 10 },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  headerRow:     { flexDirection: 'row', alignItems: 'center' },
+  iconBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  namePill:      { flex: 1 },
+  etaPill:       { marginLeft: 8 },
+  statusPill:    {},
+  bottomSheet: {
+    height: 160,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  row:       { flexDirection: 'row', alignItems: 'center' },
   markerEmoji: { fontSize: 28 },
-  statusPill: {},
   actionBtn: { height: 44, alignItems: 'center', justifyContent: 'center' },
 });
