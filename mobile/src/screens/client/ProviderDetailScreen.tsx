@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -16,6 +16,8 @@ import { useTheme } from '../../theme';
 import { Avatar, Button, Chip, EmptyState, LoadingSpinner, StarRating } from '../../components/atoms';
 import { ReviewCard } from '../../components/molecules';
 import { useProvider, useProviderReviews } from '../../hooks/api';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProviderDetail'>;
 
@@ -40,6 +42,18 @@ export default function ProviderDetailScreen({ route, navigation }: Props) {
   const { data: reviewsData, isLoading: reviewsLoading } = useProviderReviews(providerId, 3);
 
   const [bioExpanded, setBioExpanded] = useState(false);
+
+  const reviewsRef = useRef<ScrollView>(null);
+
+  const { data: availabilityData } = useQuery({
+    queryKey: ['provider-availability', providerId],
+    queryFn: () =>
+      apiClient
+        .get<{ data: { date: string; isAvailable: boolean }[] }>(`/providers/${providerId}/availability`)
+        .then(r => r.data.data ?? []),
+    enabled: !!providerId,
+    staleTime: 60_000,
+  });
 
   const todayIndex = (new Date().getDay() + 6) % 7; // 0=Mon … 6=Sun
 
@@ -89,6 +103,7 @@ export default function ProviderDetailScreen({ route, navigation }: Props) {
 
       {/* ── Scrollable body ── */}
       <ScrollView
+        ref={reviewsRef}
         contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.md, paddingBottom: 110 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -155,6 +170,15 @@ export default function ProviderDetailScreen({ route, navigation }: Props) {
         <View style={styles.daysRow}>
           {DAYS.map((day, i) => {
             const isToday = i === todayIndex;
+            // Build the date string for this day (relative to today)
+            const dayDate = new Date();
+            dayDate.setHours(0, 0, 0, 0);
+            // todayIndex is 0=Mon, so offset from JS day (0=Sun)
+            const jsDayOffset = (i - todayIndex + 7) % 7;
+            dayDate.setDate(dayDate.getDate() + jsDayOffset);
+            const dateStr = dayDate.toISOString().split('T')[0];
+            const avail = availabilityData?.find(a => a.date === dateStr);
+            const isUnavailable = avail !== undefined && !avail.isAvailable;
             return (
               <TouchableOpacity
                 key={day}
@@ -165,12 +189,16 @@ export default function ProviderDetailScreen({ route, navigation }: Props) {
                     backgroundColor: isToday ? colors.primary : colors.card,
                     borderColor: isToday ? colors.primary : colors.border,
                     borderRadius: radius.md,
+                    opacity: isUnavailable ? 0.4 : 1,
                   },
                 ]}
               >
                 <Text style={[styles.dayText, { color: isToday ? colors.white : colors.textSecondary, fontSize: fontSize.caption }]}>
                   {day}
                 </Text>
+                {isUnavailable && (
+                  <Text style={{ fontSize: 9, color: isToday ? colors.white : colors.textSecondary, marginTop: 2 }}>✗</Text>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -202,7 +230,7 @@ export default function ProviderDetailScreen({ route, navigation }: Props) {
               />
             ))}
             {totalReviews > 3 && (
-              <Button variant="outline" size="sm" onPress={() => {}}>
+              <Button variant="outline" size="sm" onPress={() => reviewsRef.current?.scrollToEnd({ animated: true })}>
                 Voir tous les {totalReviews} avis
               </Button>
             )}

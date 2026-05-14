@@ -39,16 +39,16 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 }
 
-// Stubs pour OTP/mot de passe — logique déléguée à Firebase côté client
 export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // Firebase gère le reset côté client — ici on confirme juste la réception
-    ok(res, null, 'Si cet email existe, un lien de réinitialisation a été envoyé.');
+    await authService.forgotPassword(req.body.email);
+    ok(res, null, 'Si cet e-mail existe, un lien de réinitialisation a été envoyé.');
   } catch (err) { next(err); }
 }
 
-export async function resetPassword(_req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    await authService.resetPassword(req.body.token, req.body.newPassword);
     ok(res, null, 'Mot de passe réinitialisé avec succès.');
   } catch (err) { next(err); }
 }

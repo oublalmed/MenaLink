@@ -1,118 +1,167 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, StatusBar,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
 import { COLORS } from '../../constants/colors';
+import type { AuthStackParamList } from '../../navigation/types';
 
-/**
- * Écran de connexion partagé (client et prestataire).
- */
+type NavProp = NativeStackNavigationProp<AuthStackParamList>;
+
 export default function LoginScreen(): React.JSX.Element {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email,           setEmail]           = useState('');
+  const [password,        setPassword]        = useState('');
+  const [showPassword,    setShowPassword]    = useState(false);
   const { login, isLoading } = useAuthStore();
+  const navigation = useNavigation<NavProp>();
 
   const handleLogin = async (): Promise<void> => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Erreur', 'Veuillez renseigner tous les champs.');
+      Alert.alert('Champs requis', 'Veuillez renseigner votre e-mail et mot de passe.');
       return;
     }
     try {
-      await login(email.trim(), password);
+      await login(email.trim().toLowerCase(), password);
     } catch (err) {
-      Alert.alert('Connexion échouée', err instanceof Error ? err.message : 'Erreur inconnue');
+      Alert.alert('Connexion échouée', err instanceof Error ? err.message : 'Identifiants incorrects.');
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>MenaLink</Text>
-      <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
-      <TextInput
-        style={styles.input}
-        placeholder="Adresse e-mail"
-        placeholderTextColor={COLORS.gray}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.emoji}>🕌</Text>
+          <Text style={styles.brand}>MenaLink</Text>
+          <Text style={styles.tagline}>LAÂYOUNE • SAHARA</Text>
+          <Text style={styles.subtitle}>Connectez-vous à votre compte</Text>
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        placeholderTextColor={COLORS.gray}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        {/* Form */}
+        <View style={styles.form}>
+          <Text style={styles.label}>Adresse e-mail</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="exemple@email.com"
+            placeholderTextColor={COLORS.gray}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+          />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
-        {isLoading ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <Text style={styles.buttonText}>Se connecter</Text>
-        )}
-      </TouchableOpacity>
+          <Text style={styles.label}>Mot de passe</Text>
+          <View style={styles.passwordRow}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              placeholder="••••••••"
+              placeholderTextColor={COLORS.gray}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPassword(v => !v)}
+              accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
+              <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Forgot password */}
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
+
+          {/* Login button */}
+          <TouchableOpacity
+            style={[styles.btn, isLoading && styles.btnDisabled]}
+            onPress={handleLogin}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Se connecter"
+          >
+            {isLoading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Se connecter</Text>
+            }
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social auth (placeholder — requires native Google/Apple SDK config) */}
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => Alert.alert('Bientôt disponible', 'La connexion Google sera disponible dans la prochaine version.')}
+          >
+            <Text style={{ fontSize: 20, marginRight: 8 }}>🟢</Text>
+            <Text style={styles.socialBtnText}>Continuer avec Google</Text>
+          </TouchableOpacity>
+
+          {/* Register link */}
+          <View style={styles.registerRow}>
+            <Text style={styles.registerText}>Pas encore de compte ? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('RegisterClient')}>
+              <Text style={[styles.registerText, { color: COLORS.primary, fontWeight: '600' }]}>
+                S'inscrire
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={() => navigation.navigate('RegisterProvider')}>
+            <Text style={[styles.registerText, { textAlign: 'center', marginTop: 4, color: COLORS.dark }]}>
+              Je suis prestataire →
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.gray,
-    marginBottom: 32,
-  },
-  input: {
-    width: '100%',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: COLORS.dark,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.lightGray,
-  },
-  button: {
-    width: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  root:         { flex: 1, backgroundColor: COLORS.background },
+  container:    { flexGrow: 1, padding: 24, justifyContent: 'center' },
+  header:       { alignItems: 'center', marginBottom: 32 },
+  emoji:        { fontSize: 52, marginBottom: 8 },
+  brand:        { fontSize: 28, fontWeight: '700', color: COLORS.primary },
+  tagline:      { fontSize: 11, letterSpacing: 2, color: COLORS.dark, fontWeight: '600', marginTop: 2, opacity: 0.6 },
+  subtitle:     { fontSize: 15, color: COLORS.gray, marginTop: 8 },
+  form:         { width: '100%' },
+  label:        { fontSize: 13, fontWeight: '600', color: COLORS.dark, marginBottom: 6, marginTop: 12 },
+  input:        { backgroundColor: COLORS.white, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: COLORS.dark, marginBottom: 4, borderWidth: 1, borderColor: '#E5D9C8' },
+  passwordRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eyeBtn:       { padding: 12, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: '#E5D9C8' },
+  forgotRow:    { alignItems: 'flex-end', marginTop: 8, marginBottom: 4 },
+  forgotText:   { color: COLORS.primary, fontSize: 13, fontWeight: '500' },
+  btn:          { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 16 },
+  btnDisabled:  { opacity: 0.7 },
+  btnText:      { color: '#fff', fontSize: 16, fontWeight: '600' },
+  divider:      { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 10 },
+  dividerLine:  { flex: 1, height: 1, backgroundColor: '#E5D9C8' },
+  dividerText:  { color: COLORS.gray, fontSize: 13 },
+  socialBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E5D9C8', borderRadius: 12, paddingVertical: 14, backgroundColor: COLORS.white },
+  socialBtnText:{ fontSize: 15, fontWeight: '500', color: COLORS.dark },
+  registerRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
+  registerText: { fontSize: 14, color: COLORS.gray },
 });

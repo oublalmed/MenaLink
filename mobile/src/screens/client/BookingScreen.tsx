@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,8 +17,19 @@ import type { RootStackParamList } from '../../navigation/types';
 import { useTheme } from '../../theme';
 import { Avatar, Button, Chip, LoadingSpinner } from '../../components/atoms';
 import { useProvider, useQuote, useCreateBooking } from '../../hooks/api';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import apiClient from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Booking'>;
+
+interface ClientAddress {
+  id: string;
+  label: string;
+  street: string;
+  city: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -39,12 +51,6 @@ const TIME_SLOTS: string[] = (() => {
   }
   return slots;
 })();
-
-const MOCK_ADDRESSES = [
-  { id: 'addr1', label: '12 Rue Hassan II, Casablanca' },
-  { id: 'addr2', label: '45 Bd Mohammed V, Rabat' },
-  { id: 'addr3', label: '7 Av. des FAR, Marrakech' },
-];
 
 const PAYMENT_METHODS = [
   { key: 'ONLINE' as const, label: '💳 En ligne (YouCan Pay)' },
@@ -112,7 +118,7 @@ export default function BookingScreen({ route, navigation }: Props) {
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   // ── Step 3 ──
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(MOCK_ADDRESSES[0].id);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [newStreet, setNewStreet] = useState('');
   const [newCity, setNewCity] = useState('');
@@ -120,6 +126,26 @@ export default function BookingScreen({ route, navigation }: Props) {
 
   // ── Step 4 ──
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('CASH');
+
+  // ── Real client addresses ──
+  const { data: addressesData, isLoading: addressesLoading } = useQuery({
+    queryKey: ['client-addresses'],
+    queryFn: () => apiClient.get<{ data: ClientAddress[] }>('/users/me/addresses').then(r => r.data.data ?? []),
+    staleTime: 60_000,
+  });
+  const addresses: ClientAddress[] = addressesData ?? [];
+
+  // Save new address mutation
+  const saveAddressMutation = useMutation({
+    mutationFn: (body: { street: string; city: string; label: string }) =>
+      apiClient.post<{ data: ClientAddress }>('/users/me/addresses', body).then(r => r.data.data),
+    onSuccess: (saved) => {
+      setSelectedAddressId(saved.id);
+      setAddingAddress(false);
+      setNewStreet('');
+      setNewCity('');
+    },
+  });
 
   // ── Quote ──
   const { data: quote, isLoading: quoteLoading } = useQuote(
@@ -146,18 +172,24 @@ export default function BookingScreen({ route, navigation }: Props) {
   };
 
   const handleConfirm = async () => {
-    const addressLine = addingAddress
-      ? `${newStreet}, ${newCity}`
-      : MOCK_ADDRESSES.find(a => a.id === selectedAddressId)?.label ?? '';
-
     try {
+      let finalAddressId = selectedAddressId;
+      if (addingAddress) {
+        const saved = await saveAddressMutation.mutateAsync({
+          street: newStreet.trim(),
+          city: newCity.trim(),
+          label: `${newStreet.trim()}, ${newCity.trim()}`,
+        });
+        finalAddressId = saved.id;
+      }
+
       const booking = await createBooking({
         providerId,
         serviceType: selectedService,
         scheduledDate: selectedDate.toISOString().split('T')[0],
         scheduledTime: selectedTime,
         durationHours,
-        addressId: addingAddress ? undefined : selectedAddressId ?? undefined,
+        addressId: finalAddressId ?? undefined,
         notes: notes.trim() || undefined,
         paymentMethod,
       });
@@ -186,7 +218,7 @@ export default function BookingScreen({ route, navigation }: Props) {
 
   const selectedAddressLabel = addingAddress
     ? `${newStreet}, ${newCity}`
-    : MOCK_ADDRESSES.find(a => a.id === selectedAddressId)?.label ?? '';
+    : addresses.find(a => a.id === selectedAddressId)?.label ?? '';
 
   const serviceName = SERVICE_OPTIONS.find(s => s.key === selectedService)?.label ?? selectedService;
 
@@ -377,29 +409,37 @@ export default function BookingScreen({ route, navigation }: Props) {
     <View>
       <Text style={[styles.label, { color: colors.text, fontSize: fontSize.body }]}>Adresse d'intervention</Text>
 
-      {MOCK_ADDRESSES.map(addr => {
-        const selected = !addingAddress && selectedAddressId === addr.id;
-        return (
-          <TouchableOpacity
-            key={addr.id}
-            activeOpacity={0.8}
-            style={[
-              styles.addressRow,
-              {
-                borderColor: selected ? colors.primary : colors.border,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-              },
-            ]}
-            onPress={() => { setSelectedAddressId(addr.id); setAddingAddress(false); }}
-          >
-            <View style={[styles.radioOuter, { borderColor: selected ? colors.primary : colors.border }]}>
-              {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
-            </View>
-            <Text style={[{ color: colors.text, fontSize: fontSize.body, flex: 1 }]}>{addr.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
+      {addressesLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
+      ) : addresses.length === 0 && !addingAddress ? (
+        <View style={{ padding: 16, alignItems: 'center' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Aucune adresse enregistrée</Text>
+        </View>
+      ) : (
+        addresses.map(addr => {
+          const selected = !addingAddress && selectedAddressId === addr.id;
+          return (
+            <TouchableOpacity
+              key={addr.id}
+              activeOpacity={0.8}
+              style={[
+                styles.addressRow,
+                {
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                },
+              ]}
+              onPress={() => { setSelectedAddressId(addr.id); setAddingAddress(false); }}
+            >
+              <View style={[styles.radioOuter, { borderColor: selected ? colors.primary : colors.border }]}>
+                {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+              </View>
+              <Text style={[{ color: colors.text, fontSize: fontSize.body, flex: 1 }]}>{addr.label}</Text>
+            </TouchableOpacity>
+          );
+        })
+      )}
 
       {/* Add new address */}
       <TouchableOpacity

@@ -48,6 +48,23 @@ export const youcanPayService = {
   },
 
   /**
+   * Rembourse une commande YouCan Pay.
+   */
+  async refundOrder(orderId: string, amount: number): Promise<void> {
+    const baseUrl = process.env.YOUCAN_PAY_BASE_URL ?? 'https://pay.youcan.shop';
+    const token   = process.env.YOUCAN_PAY_TOKEN    ?? '';
+    const res = await fetch(`${baseUrl}/store/orders/${orderId}/refund`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ amount: Math.round(amount * 100) }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(`YouCan Pay refund error: ${text}`);
+    }
+  },
+
+  /**
    * Vérifie la signature HMAC du webhook YouCan Pay.
    */
   verifyWebhook(payload: Record<string, unknown>, signature: string): boolean {

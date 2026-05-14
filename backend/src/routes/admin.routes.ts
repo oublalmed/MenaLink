@@ -16,13 +16,14 @@ router.use(authenticate, authorize(UserRole.ADMIN));
 
 router.get( '/dashboard',              ctrl.getDashboard);
 router.get( '/users',                  validateQuery(adminUserListSchema),    ctrl.listUsers);
-router.put( '/users/:id/status',       validateBody(adminUserStatusSchema),   ctrl.setUserStatus);
+router.patch('/users/:id/status',      validateBody(adminUserStatusSchema),   ctrl.setUserStatus);
+router.get( '/providers',              paginate(),                            ctrl.listAllProviders);
 router.get( '/providers/pending',      paginate(),                            ctrl.listPendingProviders);
-router.put( '/providers/:id/verify',   validateBody(adminVerifyProviderSchema), ctrl.verifyProvider);
+router.patch('/providers/:id/verify',  validateBody(adminVerifyProviderSchema), ctrl.verifyProvider);
 router.get( '/bookings',               validateQuery(adminBookingListSchema), ctrl.listAllBookings);
 router.get( '/transactions',           paginate(),                            ctrl.listAllTransactions);
 router.get( '/disputes',               paginate(),                            ctrl.listDisputes);
-router.put( '/disputes/:id',           validateBody(adminResolveDisputeSchema), ctrl.resolveDispute);
+router.patch('/disputes/:id',          validateBody(adminResolveDisputeSchema), ctrl.resolveDispute);
 router.get( '/settings',               ctrl.getSettings);
 router.put( '/settings/:key',          validateBody(adminSettingSchema),      ctrl.updateSetting);
 

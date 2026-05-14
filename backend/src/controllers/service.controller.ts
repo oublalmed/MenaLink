@@ -1,61 +1,32 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { prisma } from '../config/prisma';
-import { sendSuccess } from '../utils/response';
-import { AppError } from '../middleware/errorHandler';
-import { ServiceType } from '../../../shared/types';
+import { ok } from '../utils/response';
 
-const serviceSchema = z.object({
-  name: z.string().min(3),
-  description: z.string().min(10),
-  type: z.nativeEnum(ServiceType),
-  basePrice: z.number().positive(),
-  durationHours: z.number().min(0.5).max(12),
-  imageUrl: z.string().url().optional(),
-});
+const SERVICE_CATALOG = [
+  { type: 'CLEANING',           name: 'Ménage classique',    description: 'Nettoyage standard de votre domicile : sols, surfaces, sanitaires.', basePrice: 80,  durationHours: 2, icon: '🧹' },
+  { type: 'IRONING',            name: 'Repassage',           description: 'Repassage de vêtements et linge de maison.', basePrice: 60, durationHours: 1.5, icon: '🧺' },
+  { type: 'DEEP_CLEANING',      name: 'Grand ménage',        description: 'Nettoyage complet et approfondi de toutes les pièces.', basePrice: 150, durationHours: 4, icon: '🧼' },
+  { type: 'POST_CONSTRUCTION',  name: 'Post-chantier',       description: 'Nettoyage après travaux de construction ou rénovation.', basePrice: 200, durationHours: 5, icon: '🏗️' },
+  { type: 'COOKING',            name: 'Cuisine à domicile',  description: 'Préparation de repas à domicile par un cuisinier professionnel.', basePrice: 120, durationHours: 3, icon: '🍳' },
+];
 
-/** Retourne la liste des services actifs. */
 export async function getServices(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const services = await prisma.service.findMany({
-      where: { isActive: true },
-      orderBy: { basePrice: 'asc' },
-    });
-    sendSuccess(res, services);
-  } catch (err) {
-    next(err);
-  }
+    ok(res, SERVICE_CATALOG);
+  } catch (err) { next(err); }
 }
 
-/** Retourne un service par son identifiant. */
 export async function getServiceById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const service = await prisma.service.findUnique({ where: { id: req.params.id } });
-    if (!service) throw new AppError(404, 'Service introuvable');
-    sendSuccess(res, service);
-  } catch (err) {
-    next(err);
-  }
+    const service = SERVICE_CATALOG.find(s => s.type === req.params.id.toUpperCase());
+    if (!service) { res.status(404).json({ success: false, error: { message: 'Service introuvable' } }); return; }
+    ok(res, service);
+  } catch (err) { next(err); }
 }
 
-/** Crée un nouveau service (admin). */
-export async function createService(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const data = serviceSchema.parse(req.body);
-    const service = await prisma.service.create({ data });
-    sendSuccess(res, service, 201);
-  } catch (err) {
-    next(err);
-  }
+export async function createService(_req: Request, res: Response): Promise<void> {
+  res.status(501).json({ success: false, error: { message: 'Le catalogue est géré statiquement. Contactez l\'équipe technique.' } });
 }
 
-/** Met à jour un service existant (admin). */
-export async function updateService(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const data = serviceSchema.partial().parse(req.body);
-    const service = await prisma.service.update({ where: { id: req.params.id }, data });
-    sendSuccess(res, service);
-  } catch (err) {
-    next(err);
-  }
+export async function updateService(_req: Request, res: Response): Promise<void> {
+  res.status(501).json({ success: false, error: { message: 'Le catalogue est géré statiquement. Contactez l\'équipe technique.' } });
 }

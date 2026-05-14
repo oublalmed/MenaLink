@@ -166,3 +166,49 @@ const safeUserSelect = {
   createdAt:  true,
   lastLoginAt: true,
 } as const;
+
+// ─── Réinitialisation de mot de passe ────────────────────────────────────────
+
+/** Envoie un e-mail de réinitialisation de mot de passe via Firebase Auth. */
+export async function forgotPassword(email: string): Promise<void> {
+  // Check user exists (silently succeed even if not, to avoid email enumeration)
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, status: true } });
+  if (!user || user.status === 'BANNED') return;
+
+  // Delegate to Firebase Auth — it sends the reset email
+  try {
+    const { firebaseAdmin } = await import('../config/firebase');
+    const resetLink = await firebaseAdmin.auth().generatePasswordResetLink(email);
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host:   process.env.SMTP_HOST ?? 'smtp.gmail.com',
+      port:   Number(process.env.SMTP_PORT ?? 587),
+      secure: Number(process.env.SMTP_PORT ?? 587) === 465,
+      auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    await transporter.sendMail({
+      from:    process.env.EMAIL_FROM ?? 'MenaLink <noreply@menalink.ma>',
+      to:      email,
+      subject: 'Réinitialisation de votre mot de passe MenaLink',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#E8963A">Réinitialiser votre mot de passe</h2>
+          <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :</p>
+          <a href="${resetLink}" style="display:inline-block;background:#E8963A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+            Réinitialiser le mot de passe
+          </a>
+          <p style="color:#888;font-size:12px;margin-top:24px">Ce lien expire dans 1 heure. Si vous n'avez pas demandé cette réinitialisation, ignorez cet e-mail.</p>
+        </div>
+      `,
+    });
+  } catch {
+    // Swallow errors — do not reveal whether email exists
+  }
+}
+
+/** Vérifie un code OTP (délégué à Firebase — le client réinitialise directement via SDK). */
+export async function resetPassword(_token: string, _newPassword: string): Promise<void> {
+  // Firebase handles password reset client-side via confirmPasswordReset().
+  // This endpoint is a no-op stub for REST completeness.
+  throw AppError.badRequest(ErrorCode.VALIDATION_ERROR, 'Utilisez le SDK Firebase côté client pour confirmer la réinitialisation.');
+}

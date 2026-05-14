@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as adminService from '../services/admin.service';
 import { ok, paginated, buildPagination } from '../utils/response';
 import { AuthRequest } from '../middleware/authenticate';
@@ -22,6 +22,17 @@ export async function setUserStatus(req: AuthRequest, res: Response, next: NextF
   try {
     const user = await adminService.setUserStatus(req.params.id, req.body);
     ok(res, user, 'Statut mis à jour');
+  } catch (err) { next(err); }
+}
+
+export async function listAllProviders(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const page   = Math.max(1, Number(req.query.page)  || 1);
+    const limit  = Math.min(50, Number(req.query.limit) || 15);
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const result = await adminService.listAllProviders({ page, limit, status, search });
+    ok(res, result);
   } catch (err) { next(err); }
 }
 

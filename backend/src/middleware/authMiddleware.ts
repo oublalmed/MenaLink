@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { firebaseAuth } from '../config/firebase';
 import { prisma } from '../config/prisma';
-import { UserRole } from '../../../shared/types';
+import { UserRole } from '@prisma/client';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -29,10 +29,10 @@ export async function authenticate(
 
     const user = await prisma.user.findUnique({
       where: { firebaseUid: decoded.uid },
-      select: { id: true, firebaseUid: true, role: true, isActive: true },
+      select: { id: true, firebaseUid: true, role: true, status: true },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || user.status === 'SUSPENDED' || user.status === 'BANNED') {
       res.status(401).json({ success: false, message: 'Utilisateur introuvable ou inactif' });
       return;
     }

@@ -126,19 +126,32 @@ export async function refundBooking(bookingId: string): Promise<void> {
     throw AppError.badRequest(ErrorCode.PAYMENT_FAILED, 'La réservation n\'est pas payée');
   }
 
+  // Find the gateway reference for the YouCan Pay refund
+  const paymentTx = await prisma.transaction.findFirst({
+    where: { bookingId, type: TransactionType.PAYMENT, status: TransactionStatus.SUCCESS },
+    select: { gatewayRef: true },
+  });
+
+  // Attempt actual refund via YouCan Pay gateway
+  if (paymentTx?.gatewayRef) {
+    try {
+      await youcanPayService.refundOrder(paymentTx.gatewayRef, Number(booking.totalAmount));
+    } catch (err) {
+      // Log but do not block — admin can handle manually if gateway fails
+      const { createLogger } = await import('../utils/logger');
+      const log = createLogger('payment.refund');
+      log.error('YouCan Pay refund API failed — marking as REFUNDED in DB anyway', {
+        bookingId, gatewayRef: paymentTx.gatewayRef, error: (err as Error).message,
+      });
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
-    await tx.booking.update({
-      where: { id: bookingId },
-      data:  { paymentStatus: PaymentStatus.REFUNDED },
-    });
+    await tx.booking.update({ where: { id: bookingId }, data: { paymentStatus: PaymentStatus.REFUNDED } });
     await tx.transaction.create({
       data: {
-        bookingId,
-        userId:   booking.clientId,
-        type:     TransactionType.REFUND,
-        amount:   booking.totalAmount,
-        currency: 'MAD',
-        status:   TransactionStatus.SUCCESS,
+        bookingId, userId: booking.clientId, type: TransactionType.REFUND,
+        amount: booking.totalAmount, currency: 'MAD', status: TransactionStatus.SUCCESS,
       },
     });
   });

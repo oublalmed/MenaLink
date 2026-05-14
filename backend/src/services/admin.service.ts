@@ -18,44 +18,117 @@ type SettingDto          = z.infer<typeof adminSettingSchema>;
 // ─── KPIs Dashboard ───────────────────────────────────────────────────────────
 
 export async function getDashboardKPIs() {
-  const now      = new Date();
-  const monthAgo = new Date(now);
-  monthAgo.setDate(monthAgo.getDate() - 30);
+  const now          = new Date();
+  const monthAgo     = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, now.getDate());
 
+  // ── Core counts ───────────────────────────────────────────────────────────
   const [
-    totalUsers, totalProviders, totalClients,
-    totalBookings, completedBookings, pendingBookings,
-    totalRevenue, monthRevenue,
-    pendingVerification, openDisputes,
+    totalUsers, totalBookings, completedBookings,
+    totalRevRaw, lastMonthRevRaw, prevMonthRevRaw,
+    activeUsersCount, activeProvidersCount, openDisputesCount,
+    bookingStatusCounts, recentBookingsList, pendingProvidersList,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { role: 'PROVIDER' } }),
-    prisma.user.count({ where: { role: 'CLIENT'   } }),
     prisma.booking.count(),
     prisma.booking.count({ where: { status: BookingStatus.COMPLETED } }),
-    prisma.booking.count({ where: { status: BookingStatus.PENDING   } }),
     prisma.transaction.aggregate({ where: { type: 'COMMISSION', status: 'SUCCESS' }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({
-      where: { type: 'COMMISSION', status: 'SUCCESS', createdAt: { gte: monthAgo } },
-      _sum: { amount: true },
-    }),
-    prisma.providerProfile.count({ where: { isVerified: false } }),
+    prisma.transaction.aggregate({ where: { type: 'COMMISSION', status: 'SUCCESS', createdAt: { gte: monthAgo } }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { type: 'COMMISSION', status: 'SUCCESS', createdAt: { gte: twoMonthsAgo, lt: monthAgo } }, _sum: { amount: true } }),
+    prisma.user.count({ where: { status: 'ACTIVE' } }),
+    prisma.providerProfile.count({ where: { isAvailable: true, isVerified: true } }),
     prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
+    prisma.booking.groupBy({ by: ['status'], _count: { id: true } }),
+    prisma.booking.findMany({
+      take: 10, orderBy: { createdAt: 'desc' },
+      include: {
+        client:   { select: { firstName: true, lastName: true, email: true } },
+        provider: { select: { user: { select: { firstName: true, lastName: true } } } },
+      },
+    }),
+    prisma.providerProfile.findMany({
+      where: { isVerified: false },
+      take: 10, orderBy: { createdAt: 'desc' },
+      include: { user: { select: { id: true, firstName: true, lastName: true, email: true, createdAt: true } }, services: { select: { serviceType: true } } },
+    }),
   ]);
+
+  // ── Revenue trend ─────────────────────────────────────────────────────────
+  const lastMonthRev = Number(lastMonthRevRaw._sum.amount ?? 0);
+  const prevMonthRev = Number(prevMonthRevRaw._sum.amount ?? 0);
+  const revenueTrend = prevMonthRev > 0
+    ? parseFloat((((lastMonthRev - prevMonthRev) / prevMonthRev) * 100).toFixed(1))
+    : lastMonthRev > 0 ? 100 : 0;
+
+  // ── Bookings by status ────────────────────────────────────────────────────
+  const bbs: Record<string, number> = { PENDING: 0, CONFIRMED: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0, DISPUTED: 0 };
+  for (const row of bookingStatusCounts) bbs[row.status] = (bbs[row.status] ?? 0) + row._count.id;
+
+  // ── Monthly revenue (last 6 months) ──────────────────────────────────────
+  const monthlyRevenue: { month: string; revenue: number; bookings: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const to   = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const [rev, cnt] = await Promise.all([
+      prisma.transaction.aggregate({ where: { type: 'COMMISSION', status: 'SUCCESS', createdAt: { gte: from, lt: to } }, _sum: { amount: true } }),
+      prisma.booking.count({ where: { createdAt: { gte: from, lt: to } } }),
+    ]);
+    monthlyRevenue.push({
+      month:    from.toLocaleDateString('fr-MA', { month: 'short', year: '2-digit' }),
+      revenue:  parseFloat((Number(rev._sum.amount ?? 0)).toFixed(2)),
+      bookings: cnt,
+    });
+  }
+
+  // ── Daily bookings (last 7 days) ──────────────────────────────────────────
+  const dailyBookings: { date: string; PENDING: number; CONFIRMED: number; COMPLETED: number; CANCELLED: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const from = new Date(now); from.setDate(now.getDate() - i); from.setHours(0, 0, 0, 0);
+    const to   = new Date(from); to.setDate(from.getDate() + 1);
+    const rows = await prisma.booking.groupBy({ by: ['status'], where: { createdAt: { gte: from, lt: to } }, _count: { id: true } });
+    const day: Record<string, number> = { PENDING: 0, CONFIRMED: 0, COMPLETED: 0, CANCELLED: 0 };
+    for (const r of rows) if (r.status in day) day[r.status] = r._count.id;
+    dailyBookings.push({ date: from.toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit' }), ...day } as typeof dailyBookings[number]);
+  }
+
+  // ── Recent bookings ───────────────────────────────────────────────────────
+  const recentBookings = recentBookingsList.map(b => ({
+    id:            b.id,
+    client:        b.client,
+    provider:      b.provider?.user ?? null,
+    serviceType:   b.serviceType,
+    scheduledDate: b.scheduledDate,
+    totalAmount:   Number(b.totalAmount),
+    status:        b.status,
+  }));
+
+  // ── Pending providers ─────────────────────────────────────────────────────
+  const pendingProviders = pendingProvidersList.map(p => ({
+    id:           p.user.id,
+    firstName:    p.user.firstName,
+    lastName:     p.user.lastName,
+    email:        p.user.email,
+    createdAt:    p.user.createdAt,
+    serviceTypes: p.services.map(s => s.serviceType),
+  }));
 
   const conversionRate = totalBookings > 0
     ? parseFloat(((completedBookings / totalBookings) * 100).toFixed(1))
     : 0;
 
   return {
-    users: { total: totalUsers, providers: totalProviders, clients: totalClients },
-    bookings: { total: totalBookings, completed: completedBookings, pending: pendingBookings, conversionRate },
-    revenue: {
-      total:     parseFloat((Number(totalRevenue._sum.amount) ?? 0).toFixed(2)),
-      thisMonth: parseFloat((Number(monthRevenue._sum.amount) ?? 0).toFixed(2)),
-    },
-    pendingVerification,
-    openDisputes,
+    totalRevenue:    parseFloat((Number(totalRevRaw._sum.amount ?? 0)).toFixed(2)),
+    revenueTrend,
+    totalBookings,
+    bookingsByStatus: bbs as Record<'PENDING'|'CONFIRMED'|'IN_PROGRESS'|'COMPLETED'|'CANCELLED'|'DISPUTED', number>,
+    totalActiveUsers: activeUsersCount,
+    conversionRate,
+    activeProviders:  activeProvidersCount,
+    openDisputes:     openDisputesCount,
+    monthlyRevenue,
+    dailyBookings,
+    recentBookings,
+    pendingProviders,
   };
 }
 
@@ -250,6 +323,60 @@ export async function updateSetting(key: string, dto: SettingDto) {
     create: { key, value: dto.value, description: dto.description },
     update: { value: dto.value, ...(dto.description && { description: dto.description }) },
   });
+}
+
+// ─── Prestataires admin ───────────────────────────────────────────────────────
+
+export async function listAllProviders(query: { page: number; limit: number; status?: string; search?: string }) {
+  const { page, limit, status, search } = query;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.ProviderProfileWhereInput = {
+    ...(status === 'PENDING'    && { isVerified: false }),
+    ...(status === 'ACTIVE'     && { isVerified: true, user: { status: 'ACTIVE' } }),
+    ...(status === 'SUSPENDED'  && { user: { status: 'SUSPENDED' } }),
+    ...(search && {
+      user: {
+        OR: [
+          { firstName: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { lastName:  { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { email:     { contains: search, mode: Prisma.QueryMode.insensitive } },
+        ],
+      },
+    }),
+  };
+
+  const [items, total] = await prisma.$transaction([
+    prisma.providerProfile.findMany({
+      where, skip, take: limit, orderBy: { createdAt: 'desc' },
+      include: {
+        user:     { select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatarUrl: true, status: true, createdAt: true } },
+        services: { select: { serviceType: true, pricePerHour: true } },
+        _count:   { select: { bookingsAsProvider: true } },
+      },
+    }),
+    prisma.providerProfile.count({ where }),
+  ]);
+
+  return {
+    items: items.map(p => ({
+      id:           p.id,
+      userId:       p.user.id,
+      firstName:    p.user.firstName,
+      lastName:     p.user.lastName,
+      email:        p.user.email,
+      phone:        p.user.phone,
+      avatarUrl:    p.user.avatarUrl,
+      status:       p.user.status,
+      isVerified:   p.isVerified,
+      isAvailable:  p.isAvailable,
+      rating:       Number(p.rating),
+      totalMissions: p._count.bookingsAsProvider,
+      services:     p.services,
+      createdAt:    p.user.createdAt,
+    })),
+    total,
+  };
 }
 
 // ─── Transactions admin ───────────────────────────────────────────────────────
