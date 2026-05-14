@@ -2,10 +2,20 @@
   "expo": {
     "name": "MenaLink",
     "slug": "menalink",
+    "owner": "menalink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/YOUR_PROJECT_ID",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",

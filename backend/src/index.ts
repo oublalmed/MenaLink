@@ -5,11 +5,16 @@ import cors from 'cors';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
 
 import { initFirebaseAdmin } from './config/firebase';
 import { startSchedulers } from './services/scheduler.service';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { swaggerSpec } from './config/swagger';
+import { initSentry, Sentry } from './config/sentry';
+import { metricsMiddleware, createMetricsRouter } from './middleware/metrics.middleware';
+import { alertingMiddleware } from './middleware/alerting.middleware';
 
 import authRoutes         from './routes/auth.routes';
 import userRoutes         from './routes/user.routes';
@@ -25,6 +30,9 @@ const app        = express();
 const PORT       = process.env.PORT ?? 4000;
 const API_PREFIX = process.env.API_PREFIX ?? '/api/v1';
 
+// ── Sentry ────────────────────────────────────────────────────────────────────
+initSentry();
+
 // ── Firebase Admin ────────────────────────────────────────────────────────────
 initFirebaseAdmin();
 startSchedulers();
@@ -37,6 +45,8 @@ app.use(cors({
   methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 app.use(compression());
+app.use(metricsMiddleware);
+app.use(alertingMiddleware);
 
 // Webhook YouCan Pay — doit rester en raw/text avant express.json()
 app.use(`${API_PREFIX}/payments/webhook`, express.raw({ type: 'application/json' }));
@@ -55,9 +65,37 @@ app.use(rateLimit({
 }));
 
 // ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
+app.get('/health', async (_req, res) => {
+  const start = Date.now();
+  let dbStatus: 'ok' | 'error' = 'ok';
+  try {
+    const { prisma } = await import('./config/prisma');
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    dbStatus = 'error';
+  }
+  res.json({
+    status: 'ok',
+    version: process.env.npm_package_version ?? '1.0.0',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    dbStatus,
+    responseTime: Date.now() - start,
+  });
 });
+
+// ── API Docs (dev only) ────────────────────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'MenaLink API Docs',
+    customCss: '.swagger-ui .topbar { background-color: #2980B9; }',
+  }));
+  app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+}
+
+// ── Prometheus metrics ────────────────────────────────────────────────────────
+app.use(createMetricsRouter());
 
 // ── Routes API ────────────────────────────────────────────────────────────────
 app.use(`${API_PREFIX}/auth`,          authRoutes);
@@ -72,6 +110,7 @@ app.use(`${API_PREFIX}/admin`,         adminRoutes);
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
+app.use(Sentry.expressErrorHandler());
 app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
