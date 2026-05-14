@@ -9,13 +9,19 @@ import { ProviderTabs } from './ProviderTabs';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme';
 
-// Lazily imported screens to keep initial bundle light
+// Client screens
 import { ProviderDetailScreen } from '../screens/client/ProviderDetailScreen';
 import { BookingScreen } from '../screens/client/BookingScreen';
 import { BookingDetailScreen } from '../screens/client/BookingDetailScreen';
 import { LiveTrackingScreen } from '../screens/client/LiveTrackingScreen';
 import { ChatScreen } from '../screens/client/ChatScreen';
 import { ReviewScreen } from '../screens/client/ReviewScreen';
+
+// Provider screens
+import { ActiveMissionScreen } from '../screens/provider/ActiveMissionScreen';
+import { ProviderBookingDetailScreen } from '../screens/provider/ProviderBookingDetailScreen';
+import { WithdrawalScreen } from '../screens/provider/WithdrawalScreen';
+import { ProviderChatScreen } from '../screens/provider/ProviderChatScreen';
 
 const Root = createNativeStackNavigator<RootStackParamList>();
 
@@ -37,7 +43,13 @@ export function RootNavigator() {
         {user == null ? (
           <Root.Screen name="Auth" component={AuthStack} />
         ) : user.role === 'PROVIDER' ? (
-          <Root.Screen name="ProviderTabs" component={ProviderTabs} />
+          <>
+            <Root.Screen name="ProviderTabs" component={ProviderTabs} />
+            <Root.Screen name="ActiveMission" component={ActiveMissionScreen} options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }} />
+            <Root.Screen name="ProviderBookingDetail" component={ProviderBookingDetailScreen} options={{ animation: 'slide_from_right' }} />
+            <Root.Screen name="Withdrawal" component={WithdrawalScreen} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+            <Root.Screen name="ProviderChat" component={ProviderChatScreen} options={{ animation: 'slide_from_right' }} />
+          </>
         ) : (
           <>
             <Root.Screen name="ClientTabs" component={ClientTabs} />

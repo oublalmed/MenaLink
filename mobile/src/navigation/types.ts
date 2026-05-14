@@ -22,6 +22,7 @@ export type ProviderTabsParamList = {
   Requests: undefined;
   Calendar: undefined;
   Earnings: undefined;
+  ChatList: undefined;
   Profile: undefined;
 };
 
@@ -29,7 +30,7 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   ClientTabs: NavigatorScreenParams<ClientTabsParamList>;
   ProviderTabs: NavigatorScreenParams<ProviderTabsParamList>;
-  // Client modals / stack screens
+  // Client stack screens
   ProviderDetail: { providerId: string };
   Booking: { providerId: string; providerName: string; hourlyRateMin: number };
   BookingDetail: { bookingId: string };
@@ -37,4 +38,9 @@ export type RootStackParamList = {
   Chat: { bookingId: string; participantName: string; participantId: string; participantAvatarUrl?: string };
   Review: { bookingId: string; providerName: string; providerAvatarUrl?: string };
   Payment: { bookingId: string; amount: number; paymentUrl: string };
+  // Provider stack screens
+  ActiveMission: { bookingId: string };
+  ProviderBookingDetail: { bookingId: string };
+  Withdrawal: undefined;
+  ProviderChat: { bookingId: string; participantName: string; participantId: string; participantAvatarUrl?: string };
 };
