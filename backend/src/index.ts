@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 import { initFirebaseAdmin } from './config/firebase';
+import { startSchedulers } from './services/scheduler.service';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 
@@ -26,6 +27,7 @@ const API_PREFIX = process.env.API_PREFIX ?? '/api/v1';
 
 // ── Firebase Admin ────────────────────────────────────────────────────────────
 initFirebaseAdmin();
+startSchedulers();
 
 // ── Sécurité & middlewares globaux ────────────────────────────────────────────
 app.use(helmet());
