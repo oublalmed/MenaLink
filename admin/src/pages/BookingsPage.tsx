@@ -126,7 +126,7 @@ const BookingsPage: React.FC = () => {
 
   function getBadgeColor(statusColor: string): string {
     if (statusColor === 'orange') return '#E67E22';
-    if (statusColor === 'blue') return '#2980B9';
+    if (statusColor === 'blue') return '#E8963A';
     if (statusColor === 'green') return '#27AE60';
     if (statusColor === 'red') return '#E74C3C';
     if (statusColor === 'cyan') return '#1ABC9C';
@@ -152,7 +152,7 @@ const BookingsPage: React.FC = () => {
           </li>
         ))}
         {items.length > 3 && (
-          <li style={{ fontSize: 11, color: '#2980B9' }}>
+          <li style={{ fontSize: 11, color: '#E8963A' }}>
             +{items.length - 3} autres
           </li>
         )}

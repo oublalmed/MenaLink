@@ -15,7 +15,7 @@ const STATUS_FILTERS = [
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: '#E67E22',
-  CONFIRMED: '#2980B9',
+  CONFIRMED: '#E8963A',
   IN_PROGRESS: '#8E44AD',
   COMPLETED: '#27AE60',
   CANCELLED: '#E74C3C',

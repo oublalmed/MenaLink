@@ -209,7 +209,7 @@ export default function ClientsPage(): React.JSX.Element {
       dataIndex: 'totalSpent',
       width: 140,
       render: (v: number) => (
-        <Text style={{ color: '#2980B9' }}>{v.toFixed(2)} MAD</Text>
+        <Text style={{ color: '#E8963A' }}>{v.toFixed(2)} MAD</Text>
       ),
     },
     {
@@ -514,7 +514,7 @@ export default function ClientsPage(): React.JSX.Element {
                     value={detail.totalSpent}
                     precision={2}
                     suffix="MAD"
-                    valueStyle={{ color: '#2980B9' }}
+                    valueStyle={{ color: '#E8963A' }}
                   />
                 </div>
               </Col>

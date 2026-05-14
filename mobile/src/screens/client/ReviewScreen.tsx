@@ -20,7 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Review'>;
 const RATING_LABELS = ['Très mauvais', 'Mauvais', 'Correct', 'Bien', 'Excellent'];
 
 const CONFETTI_COLORS = [
-  '#2980B9', '#27AE60', '#E67E22', '#E74C3C',
+  '#E8963A', '#27AE60', '#E67E22', '#E74C3C',
   '#9B59B6', '#F1C40F', '#1ABC9C', '#E91E63',
 ];
 

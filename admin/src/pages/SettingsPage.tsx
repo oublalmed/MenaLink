@@ -304,7 +304,7 @@ export default function SettingsPage(): React.JSX.Element {
             type="primary"
             htmlType="submit"
             loading={saveSettingsMutation.isPending}
-            style={{ backgroundColor: '#2980B9' }}
+            style={{ backgroundColor: '#E8963A' }}
           >
             Enregistrer
           </Button>
@@ -360,7 +360,7 @@ export default function SettingsPage(): React.JSX.Element {
             type="primary"
             htmlType="submit"
             loading={saveSettingsMutation.isPending}
-            style={{ backgroundColor: '#2980B9' }}
+            style={{ backgroundColor: '#E8963A' }}
           >
             Enregistrer
           </Button>
@@ -408,7 +408,7 @@ export default function SettingsPage(): React.JSX.Element {
             type="primary"
             htmlType="submit"
             loading={saveSettingsMutation.isPending}
-            style={{ backgroundColor: '#2980B9' }}
+            style={{ backgroundColor: '#E8963A' }}
           >
             Enregistrer
           </Button>
@@ -454,7 +454,7 @@ export default function SettingsPage(): React.JSX.Element {
             type="primary"
             htmlType="submit"
             loading={saveSettingsMutation.isPending}
-            style={{ backgroundColor: '#2980B9' }}
+            style={{ backgroundColor: '#E8963A' }}
           >
             Enregistrer
           </Button>
@@ -475,7 +475,7 @@ export default function SettingsPage(): React.JSX.Element {
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleOpenAddService}
-              style={{ backgroundColor: '#2980B9' }}
+              style={{ backgroundColor: '#E8963A' }}
             >
               Ajouter un service
             </Button>

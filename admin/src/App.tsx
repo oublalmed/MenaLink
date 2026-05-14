@@ -39,7 +39,7 @@ export default function App(): React.JSX.Element {
           justifyContent: 'center',
           alignItems: 'center',
           height: '100vh',
-          background: '#F0F4F8',
+          background: '#FBF4EC',
         }}
       >
         <Spin size="large" />

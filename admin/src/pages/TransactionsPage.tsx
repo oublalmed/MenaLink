@@ -83,7 +83,7 @@ export default function TransactionsPage(): React.JSX.Element {
           {[
             { title: 'Paiements', value: stats.totalPayments, color: '#27AE60' },
             { title: 'Commissions', value: stats.totalCommissions, color: '#8E44AD' },
-            { title: 'Retraits', value: stats.totalWithdrawals, color: '#2980B9' },
+            { title: 'Retraits', value: stats.totalWithdrawals, color: '#E8963A' },
             { title: 'Remboursements', value: stats.totalRefunds, color: '#E67E22' },
           ].map(s => (
             <Col xs={12} lg={6} key={s.title}>

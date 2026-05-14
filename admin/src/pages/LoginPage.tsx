@@ -42,7 +42,7 @@ export default function LoginPage(): React.JSX.Element {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: '#F0F4F8',
+        background: '#FBF4EC',
         padding: '24px 16px',
       }}
     >
@@ -66,7 +66,7 @@ export default function LoginPage(): React.JSX.Element {
               width: 56,
               height: 56,
               borderRadius: 14,
-              background: 'linear-gradient(135deg, #2980B9 0%, #1a5f8a 100%)',
+              background: 'linear-gradient(135deg, #E8963A 0%, #C4762A 100%)',
               marginBottom: 16,
             }}
           >
@@ -75,7 +75,7 @@ export default function LoginPage(): React.JSX.Element {
           <Title
             level={2}
             style={{
-              color: '#2980B9',
+              color: '#E8963A',
               margin: 0,
               fontWeight: 700,
               letterSpacing: '-0.5px',
@@ -162,7 +162,7 @@ export default function LoginPage(): React.JSX.Element {
               borderRadius: 10,
               fontWeight: 600,
               fontSize: 15,
-              background: 'linear-gradient(135deg, #2980B9 0%, #1a5f8a 100%)',
+              background: 'linear-gradient(135deg, #E8963A 0%, #C4762A 100%)',
               border: 'none',
               boxShadow: '0 4px 12px rgba(41,128,185,0.35)',
             }}

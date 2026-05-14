@@ -51,7 +51,7 @@ const FONT_SIZE_MAP: Record<AvatarSize, number> = {
 /** Derives a deterministic background color from the user's name */
 function colorFromName(name: string): string {
   const palette = [
-    '#2980B9', '#27AE60', '#E67E22', '#9B59B6',
+    '#E8963A', '#27AE60', '#E67E22', '#9B59B6',
     '#E74C3C', '#1ABC9C', '#F39C12', '#2ECC71',
   ];
   let hash = 0;

@@ -26,12 +26,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         locale={frFR}
         theme={{
           token: {
-            colorPrimary: '#2980B9',
+            colorPrimary: '#E8963A',
             colorSuccess: '#27AE60',
             colorWarning: '#E67E22',
             colorError: '#E74C3C',
             borderRadius: 8,
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            colorBgLayout: '#FBF4EC',
+            colorBgContainer: '#FFFFFF',
           },
           algorithm: theme.defaultAlgorithm,
         }}

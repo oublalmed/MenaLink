@@ -85,7 +85,7 @@ function StatCard({
   value,
   suffix,
   sub,
-  color = '#2980B9',
+  color = '#E8963A',
   danger = false,
 }: {
   title: string;
@@ -323,7 +323,7 @@ export default function PaymentsPage(): React.JSX.Element {
       width: 200,
       render: (_, r) => (
         <Space>
-          <Avatar icon={<UserOutlined />} size={32} style={{ backgroundColor: '#2980B9' }} />
+          <Avatar icon={<UserOutlined />} size={32} style={{ backgroundColor: '#E8963A' }} />
           <div>
             <div>
               <Text strong>{r.providerName}</Text>
@@ -342,7 +342,7 @@ export default function PaymentsPage(): React.JSX.Element {
       key: 'amount',
       width: 130,
       render: (_, r) => (
-        <Text strong style={{ color: '#2980B9', fontSize: 15 }}>
+        <Text strong style={{ color: '#E8963A', fontSize: 15 }}>
           {r.amount.toFixed(2)} MAD
         </Text>
       ),
@@ -520,7 +520,7 @@ export default function PaymentsPage(): React.JSX.Element {
             title="CA total"
             value={stats ? stats.totalRevenue.toFixed(2) : '—'}
             suffix="MAD"
-            color="#2980B9"
+            color="#E8963A"
             sub={
               stats && (
                 <Text type="secondary">
@@ -606,7 +606,7 @@ export default function PaymentsPage(): React.JSX.Element {
             <YAxis tick={{ fontSize: 12 }} />
             <RechartsTooltip formatter={(v: number) => `${v} MAD`} />
             <Legend />
-            <Bar dataKey="revenue" name="CA" fill="#2980B9" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="revenue" name="CA" fill="#E8963A" radius={[3, 3, 0, 0]} />
             <Bar dataKey="commissions" name="Commissions" fill="#8E44AD" radius={[3, 3, 0, 0]} />
             <Bar dataKey="refunds" name="Remboursements" fill="#E67E22" radius={[3, 3, 0, 0]} />
           </BarChart>

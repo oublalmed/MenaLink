@@ -63,7 +63,7 @@ export default function WithdrawalsPage(): React.JSX.Element {
     { title: 'Email', dataIndex: 'providerEmail', ellipsis: true },
     {
       title: 'Montant', dataIndex: 'amount',
-      render: (a: number) => <span style={{ fontWeight: 700, color: '#2980B9' }}>{a.toFixed(2)} MAD</span>,
+      render: (a: number) => <span style={{ fontWeight: 700, color: '#E8963A' }}>{a.toFixed(2)} MAD</span>,
     },
     {
       title: 'Statut', dataIndex: 'status',

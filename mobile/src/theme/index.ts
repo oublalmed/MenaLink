@@ -1,19 +1,19 @@
 import { useColorScheme } from 'react-native';
 
 export const COLORS = {
-  primary: '#2980B9',
-  dark: '#2C3E50',
+  primary: '#E8963A',
+  dark: '#1B3A2D',
   success: '#27AE60',
   warning: '#E67E22',
   danger: '#E74C3C',
   gray: '#7F8C8D',
-  lightGray: '#F4F6F7',
+  lightGray: '#F0E8D5',
   white: '#FFFFFF',
-  background: '#F0F4F8',
+  background: '#FBF4EC',
   // dark mode
-  darkBg: '#1A1F2E',
-  darkCard: '#242B3D',
-  darkBorder: '#2E3A4E',
+  darkBg: '#0F2018',
+  darkCard: '#1A3025',
+  darkBorder: '#2A4535',
 } as const;
 
 export const SPACING = {

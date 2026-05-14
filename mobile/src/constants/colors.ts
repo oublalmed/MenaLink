@@ -1,13 +1,13 @@
 export const COLORS = {
-  primary: '#2980B9',
-  dark: '#2C3E50',
-  success: '#27AE60',
-  warning: '#E67E22',
-  danger: '#E74C3C',
-  gray: '#7F8C8D',
-  lightGray: '#F4F6F7',
-  white: '#FFFFFF',
-  background: '#F0F4F8',
+  primary:    '#E8963A',
+  dark:       '#1B3A2D',
+  success:    '#27AE60',
+  warning:    '#E67E22',
+  danger:     '#E74C3C',
+  gray:       '#7F8C8D',
+  lightGray:  '#F0E8D5',
+  white:      '#FFFFFF',
+  background: '#FBF4EC',
 } as const;
 
 export type ColorKey = keyof typeof COLORS;

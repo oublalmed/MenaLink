@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   withdrawBtn:  { paddingHorizontal: 12, paddingVertical: 7 },
   tab:          { alignItems: 'center', justifyContent: 'center' },
   heroCard: {
-    shadowColor: '#2980B9',
+    shadowColor: '#E8963A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,

@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  backArrow: { fontSize: 18, fontWeight: '700', color: '#2C3E50' },
+  backArrow: { fontSize: 18, fontWeight: '700', color: '#1B3A2D' },
   avatarContainer: { alignItems: 'center', zIndex: 5 },
   avatarRing: {
     borderWidth: 3,

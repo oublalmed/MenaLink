@@ -101,7 +101,7 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }): React.JSX.Element {
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: 'linear-gradient(135deg, #2980B9 0%, #1a5f8a 100%)',
+          background: 'linear-gradient(135deg, #E8963A 0%, #C4762A 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -150,7 +150,7 @@ function NotificationsDropdown(): React.JSX.Element {
               avatar={
                 <Avatar
                   size={36}
-                  style={{ backgroundColor: '#2980B9', flexShrink: 0 }}
+                  style={{ backgroundColor: '#E8963A', flexShrink: 0 }}
                   icon={<BellOutlined />}
                 />
               }
@@ -309,7 +309,7 @@ export default function MainLayout(): React.JSX.Element {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
-          background: '#2C3E50',
+          background: '#1B3A2D',
           position: 'fixed',
           left: 0,
           top: 0,
@@ -353,7 +353,7 @@ export default function MainLayout(): React.JSX.Element {
             <Avatar
               size={36}
               style={{
-                backgroundColor: '#2980B9',
+                backgroundColor: '#E8963A',
                 flexShrink: 0,
                 fontWeight: 700,
                 fontSize: 15,
@@ -472,7 +472,7 @@ export default function MainLayout(): React.JSX.Element {
               <Space style={{ cursor: 'pointer' }} size={8}>
                 <Avatar
                   size={34}
-                  style={{ backgroundColor: '#2980B9', fontWeight: 700, fontSize: 14 }}
+                  style={{ backgroundColor: '#E8963A', fontWeight: 700, fontSize: 14 }}
                 >
                   {adminInitial}
                 </Avatar>
@@ -487,7 +487,7 @@ export default function MainLayout(): React.JSX.Element {
         {/* CONTENT */}
         <Content
           style={{
-            background: '#F0F4F8',
+            background: '#FBF4EC',
             padding: 24,
             minHeight: 'calc(100vh - 64px)',
           }}

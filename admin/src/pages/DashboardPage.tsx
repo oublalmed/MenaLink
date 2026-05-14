@@ -131,7 +131,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const PIE_COLORS: Record<string, string> = {
   PENDING: '#E67E22',
-  CONFIRMED: '#2980B9',
+  CONFIRMED: '#E8963A',
   IN_PROGRESS: '#1ABC9C',
   COMPLETED: '#27AE60',
   CANCELLED: '#E74C3C',
@@ -361,7 +361,7 @@ export default function DashboardPage(): React.JSX.Element {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: 24, color: '#2C3E50', fontWeight: 700 }}>
+      <Title level={3} style={{ marginBottom: 24, color: '#1B3A2D', fontWeight: 700 }}>
         Tableau de bord
       </Title>
 
@@ -376,8 +376,8 @@ export default function DashboardPage(): React.JSX.Element {
             suffix="MAD"
             precision={2}
             trend={d.revenueTrend}
-            prefix={<DollarOutlined style={{ color: '#2980B9', marginRight: 4 }} />}
-            valueStyle={{ color: '#2980B9' }}
+            prefix={<DollarOutlined style={{ color: '#E8963A', marginRight: 4 }} />}
+            valueStyle={{ color: '#E8963A' }}
           />
         </Col>
         <Col xs={24} sm={12} xl={8}>
@@ -461,10 +461,10 @@ export default function DashboardPage(): React.JSX.Element {
                 <Line
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#2980B9"
+                  stroke="#E8963A"
                   strokeWidth={2.5}
                   dot={false}
-                  activeDot={{ r: 5, fill: '#2980B9' }}
+                  activeDot={{ r: 5, fill: '#E8963A' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -564,7 +564,7 @@ export default function DashboardPage(): React.JSX.Element {
                 />
                 <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="PENDING"   stackId="a" fill="#E67E22" name="En attente" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="CONFIRMED" stackId="a" fill="#2980B9" name="Confirmée"  radius={[0, 0, 0, 0]} />
+                <Bar dataKey="CONFIRMED" stackId="a" fill="#E8963A" name="Confirmée"  radius={[0, 0, 0, 0]} />
                 <Bar dataKey="COMPLETED" stackId="a" fill="#27AE60" name="Terminée"   radius={[0, 0, 0, 0]} />
                 <Bar dataKey="CANCELLED" stackId="a" fill="#E74C3C" name="Annulée"    radius={[4, 4, 0, 0]} />
               </BarChart>

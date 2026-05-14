@@ -28,7 +28,7 @@ export function ClientTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.gray,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, elevation: 12, shadowColor: '#1B3A2D', shadowOpacity: 0.1, shadowRadius: 8 },
         tabBarIcon: ({ focused }) => (
           <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>{ICONS[route.name]}</Text>
         ),
