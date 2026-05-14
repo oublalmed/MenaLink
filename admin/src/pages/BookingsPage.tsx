@@ -1,15 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Tag, Typography, Select, Space, Button, Modal, Descriptions } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import React, { useState, useMemo } from 'react';
+import {
+  Table,
+  Tag,
+  Button,
+  Space,
+  Input,
+  Select,
+  Modal,
+  Descriptions,
+  Typography,
+  message,
+  Badge,
+  Steps,
+  Card,
+  Segmented,
+  Tooltip,
+  Calendar,
+  DatePicker,
+} from 'antd';
+import {
+  EyeOutlined,
+  StopOutlined,
+  CopyOutlined,
+  CalendarOutlined,
+  UnorderedListOutlined,
+} from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
 import apiClient from '../services/api';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
+const { RangePicker } = DatePicker;
 
 interface AdminBooking {
   id: string;
   clientName: string;
+  clientId: string;
   providerName: string;
+  providerId: string;
   serviceType: string;
   scheduledDate: string;
   scheduledTime: string;
@@ -20,111 +49,438 @@ interface AdminBooking {
   paymentMethod: string;
   paymentStatus: string;
   status: string;
+  address?: string;
+  city?: string;
+  notes?: string;
   createdAt: string;
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  PENDING: 'orange', CONFIRMED: 'blue', IN_PROGRESS: 'cyan',
-  COMPLETED: 'green', CANCELLED: 'red', DISPUTED: 'volcano',
+  PENDING: 'orange',
+  CONFIRMED: 'blue',
+  IN_PROGRESS: 'cyan',
+  COMPLETED: 'green',
+  CANCELLED: 'red',
+  DISPUTED: 'volcano',
 };
+
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'En attente', CONFIRMED: 'Confirmée', IN_PROGRESS: 'En cours',
-  COMPLETED: 'Terminée', CANCELLED: 'Annulée', DISPUTED: 'Litige',
+  PENDING: 'En attente',
+  CONFIRMED: 'Confirmée',
+  IN_PROGRESS: 'En cours',
+  COMPLETED: 'Terminée',
+  CANCELLED: 'Annulée',
+  DISPUTED: 'Litige',
 };
 
-const STATUS_OPTIONS = [
-  { value: 'ALL', label: 'Tous les statuts' },
-  ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })),
-];
+const SERVICE_LABEL: Record<string, string> = {
+  CLEANING: 'Ménage',
+  IRONING: 'Repassage',
+  DEEP_CLEANING: 'Grand ménage',
+  POST_CONSTRUCTION: 'Post-chantier',
+  COOKING: 'Cuisine',
+};
 
-export default function BookingsPage(): React.JSX.Element {
-  const [bookings, setBookings]   = useState<AdminBooking[]>([]);
-  const [isLoading, setLoading]   = useState(true);
-  const [statusFilter, setFilter] = useState('ALL');
-  const [pagination, setPaging]   = useState({ page: 1, total: 0, limit: 15 });
-  const [selected, setSelected]   = useState<AdminBooking | null>(null);
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  PENDING: 'orange',
+  SUCCESS: 'green',
+  FAILED: 'red',
+};
 
-  const fetchBookings = async (page = 1): Promise<void> => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: '15' });
-      if (statusFilter !== 'ALL') params.set('status', statusFilter);
-      const res = await apiClient.get<{ data: { items: AdminBooking[]; total: number } }>(
-        `/admin/bookings?${params.toString()}`
-      );
-      setBookings(res.data.data.items);
-      setPaging(prev => ({ ...prev, total: res.data.data.total, page }));
-    } finally {
-      setLoading(false);
-    }
-  };
+const BookingsPage: React.FC = () => {
+  const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [cityFilter, setCityFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
 
-  useEffect(() => { void fetchBookings(1); }, [statusFilter]);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['bookings', page, statusFilter, dateRange, cityFilter, searchText],
+    queryFn: () =>
+      apiClient
+        .get('/admin/bookings', {
+          params: {
+            page,
+            limit: 20,
+            status: statusFilter !== 'ALL' ? statusFilter : undefined,
+            dateFrom: dateRange ? dateRange[0].format('YYYY-MM-DD') : undefined,
+            dateTo: dateRange ? dateRange[1].format('YYYY-MM-DD') : undefined,
+            city: cityFilter || undefined,
+            search: searchText || undefined,
+          },
+        })
+        .then((r) => r.data.data as { items: AdminBooking[]; total: number }),
+  });
+
+  const bookingsByDate = useMemo(() => {
+    const map: Record<string, AdminBooking[]> = {};
+    (data?.items ?? []).forEach((b) => {
+      const key = b.scheduledDate.slice(0, 10);
+      if (!map[key]) map[key] = [];
+      map[key].push(b);
+    });
+    return map;
+  }, [data]);
+
+  function getBadgeColor(statusColor: string): string {
+    if (statusColor === 'orange') return '#E67E22';
+    if (statusColor === 'blue') return '#2980B9';
+    if (statusColor === 'green') return '#27AE60';
+    if (statusColor === 'red') return '#E74C3C';
+    if (statusColor === 'cyan') return '#1ABC9C';
+    if (statusColor === 'volcano') return '#E74C3C';
+    return '#999';
+  }
+
+  function dateCellRender(date: dayjs.Dayjs) {
+    const key = date.format('YYYY-MM-DD');
+    const items = bookingsByDate[key] ?? [];
+    return (
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {items.slice(0, 3).map((b) => (
+          <li
+            key={b.id}
+            onClick={() => setSelectedBooking(b)}
+            style={{ cursor: 'pointer' }}
+          >
+            <Badge
+              color={getBadgeColor(STATUS_COLOR[b.status])}
+              text={<span style={{ fontSize: 11 }}>{b.clientName}</span>}
+            />
+          </li>
+        ))}
+        {items.length > 3 && (
+          <li style={{ fontSize: 11, color: '#2980B9' }}>
+            +{items.length - 3} autres
+          </li>
+        )}
+      </ul>
+    );
+  }
 
   const columns: ColumnsType<AdminBooking> = [
-    { title: 'Client', dataIndex: 'clientName', ellipsis: true },
-    { title: 'Prestataire', dataIndex: 'providerName', ellipsis: true },
-    { title: 'Service', dataIndex: 'serviceType' },
     {
-      title: 'Date', dataIndex: 'scheduledDate',
-      render: (d: string, r) => `${dayjs(d).format('DD/MM/YY')} ${r.scheduledTime}`,
+      title: 'ID',
+      key: 'id',
+      width: 110,
+      render: (_, r) => (
+        <Space size={4}>
+          <Text code style={{ fontSize: 12 }}>
+            {r.id.slice(0, 8)}
+          </Text>
+          <Tooltip title="Copier l'ID">
+            <CopyOutlined
+              style={{ cursor: 'pointer', color: '#999' }}
+              onClick={() => {
+                navigator.clipboard.writeText(r.id);
+                message.success('ID copié');
+              }}
+            />
+          </Tooltip>
+        </Space>
+      ),
     },
-    { title: 'Durée', dataIndex: 'durationHours', render: (h: number) => `${h}h` },
-    { title: 'Montant', dataIndex: 'totalAmount', render: (a: number) => `${a.toFixed(2)} MAD` },
     {
-      title: 'Paiement', dataIndex: 'paymentStatus',
-      render: (s: string) => <Tag color={s === 'PAID' ? 'green' : s === 'REFUNDED' ? 'orange' : 'default'}>{s}</Tag>,
+      title: 'Client',
+      dataIndex: 'clientName',
+      key: 'clientName',
+      render: (v) => <Text strong>{v}</Text>,
     },
     {
-      title: 'Statut', dataIndex: 'status',
-      render: (s: string) => <Tag color={STATUS_COLOR[s]}>{STATUS_LABEL[s] ?? s}</Tag>,
+      title: 'Prestataire',
+      dataIndex: 'providerName',
+      key: 'providerName',
+      render: (v) => <Text type="secondary">{v}</Text>,
     },
     {
-      title: '',
-      render: (_, record) => <Button size="small" onClick={() => setSelected(record)}>Détails</Button>,
+      title: 'Service',
+      dataIndex: 'serviceType',
+      key: 'serviceType',
+      render: (v) => SERVICE_LABEL[v] ?? v,
+    },
+    {
+      title: 'Date',
+      key: 'date',
+      render: (_, r) => (
+        <div>
+          <div>{dayjs(r.scheduledDate).format('DD/MM/YYYY')}</div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {r.scheduledTime}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Durée',
+      dataIndex: 'durationHours',
+      key: 'durationHours',
+      render: (v) => `${v}h`,
+      width: 70,
+    },
+    {
+      title: 'Montant',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      render: (v) => <Text strong>{v.toFixed(2)} MAD</Text>,
+    },
+    {
+      title: 'Paiement',
+      dataIndex: 'paymentStatus',
+      key: 'paymentStatus',
+      render: (v) => (
+        <Tag color={PAYMENT_STATUS_COLOR[v] ?? 'default'}>{v}</Tag>
+      ),
+    },
+    {
+      title: 'Statut',
+      dataIndex: 'status',
+      key: 'status',
+      render: (v) => (
+        <Tag color={STATUS_COLOR[v] ?? 'default'}>{STATUS_LABEL[v] ?? v}</Tag>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      fixed: 'right' as const,
+      width: 80,
+      render: (_, r) => (
+        <Button
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => setSelectedBooking(r)}
+        />
+      ),
     },
   ];
 
+  const TIMELINE_STEPS = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'];
+
   return (
-    <div>
-      <Space style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}>
-        <Title level={3} style={{ margin: 0 }}>Réservations</Title>
-        <Select value={statusFilter} onChange={v => setFilter(v)} style={{ width: 180 }} options={STATUS_OPTIONS} />
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <Space
+        style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}
+        wrap
+      >
+        <Title level={4} style={{ margin: 0 }}>
+          Réservations
+        </Title>
+        <Space wrap>
+          <Input.Search
+            style={{ width: 200 }}
+            placeholder="Client ou prestataire..."
+            onSearch={(v) => {
+              setSearchText(v);
+              setPage(1);
+            }}
+            allowClear
+          />
+          <Select
+            style={{ width: 160 }}
+            value={statusFilter}
+            onChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+            options={[
+              { value: 'ALL', label: 'Tous les statuts' },
+              ...Object.entries(STATUS_LABEL).map(([v, l]) => ({ value: v, label: l })),
+            ]}
+          />
+          <RangePicker
+            format="DD/MM/YYYY"
+            onChange={(vals: [dayjs.Dayjs, dayjs.Dayjs] | null) => {
+              setDateRange(vals);
+              setPage(1);
+            }}
+          />
+          <Select
+            style={{ width: 130 }}
+            placeholder="Ville"
+            allowClear
+            value={cityFilter || undefined}
+            onChange={(v) => {
+              setCityFilter(v ?? '');
+              setPage(1);
+            }}
+            options={[
+              { value: 'Casablanca', label: 'Casablanca' },
+              { value: 'Rabat', label: 'Rabat' },
+              { value: 'Marrakech', label: 'Marrakech' },
+              { value: 'Fès', label: 'Fès' },
+              { value: 'Agadir', label: 'Agadir' },
+            ]}
+          />
+          <Segmented
+            value={viewMode}
+            onChange={(v) => setViewMode(v as 'table' | 'calendar')}
+            options={[
+              { label: 'Tableau', value: 'table', icon: <UnorderedListOutlined /> },
+              { label: 'Calendrier', value: 'calendar', icon: <CalendarOutlined /> },
+            ]}
+          />
+        </Space>
       </Space>
 
-      <Table
-        columns={columns}
-        dataSource={bookings}
-        rowKey="id"
-        loading={isLoading}
-        pagination={{ current: pagination.page, total: pagination.total, pageSize: pagination.limit, onChange: (p) => void fetchBookings(p) }}
-        size="small"
-      />
+      {/* Table view */}
+      {viewMode === 'table' && (
+        <Table<AdminBooking>
+          columns={columns}
+          dataSource={data?.items ?? []}
+          rowKey="id"
+          loading={isLoading}
+          size="small"
+          scroll={{ x: 1300 }}
+          pagination={{
+            current: page,
+            total: data?.total ?? 0,
+            pageSize: 20,
+            onChange: (p) => setPage(p),
+            showSizeChanger: false,
+            showTotal: (total) => `${total} réservations`,
+          }}
+        />
+      )}
 
+      {/* Calendar view */}
+      {viewMode === 'calendar' && (
+        <Card>
+          <Calendar cellRender={dateCellRender} />
+        </Card>
+      )}
+
+      {/* Detail Modal */}
       <Modal
-        title="Détail de la réservation"
-        open={selected !== null}
-        onCancel={() => setSelected(null)}
+        open={selectedBooking !== null}
+        onCancel={() => setSelectedBooking(null)}
+        title={`Réservation #${selectedBooking?.id.slice(0, 8)}`}
+        width={720}
         footer={null}
-        width={600}
       >
-        {selected !== null && (
-          <Descriptions column={2} bordered size="small">
-            <Descriptions.Item label="ID" span={2}>{selected.id}</Descriptions.Item>
-            <Descriptions.Item label="Client">{selected.clientName}</Descriptions.Item>
-            <Descriptions.Item label="Prestataire">{selected.providerName}</Descriptions.Item>
-            <Descriptions.Item label="Service">{selected.serviceType}</Descriptions.Item>
-            <Descriptions.Item label="Durée">{selected.durationHours}h</Descriptions.Item>
-            <Descriptions.Item label="Date">{dayjs(selected.scheduledDate).format('DD/MM/YYYY')} {selected.scheduledTime}</Descriptions.Item>
-            <Descriptions.Item label="Paiement">{selected.paymentMethod}</Descriptions.Item>
-            <Descriptions.Item label="Montant total">{selected.totalAmount.toFixed(2)} MAD</Descriptions.Item>
-            <Descriptions.Item label="Commission">{selected.commission.toFixed(2)} MAD</Descriptions.Item>
-            <Descriptions.Item label="Prestataire net">{selected.providerAmount.toFixed(2)} MAD</Descriptions.Item>
-            <Descriptions.Item label="Statut paiement"><Tag color={selected.paymentStatus === 'PAID' ? 'green' : 'orange'}>{selected.paymentStatus}</Tag></Descriptions.Item>
-            <Descriptions.Item label="Statut"><Tag color={STATUS_COLOR[selected.status]}>{STATUS_LABEL[selected.status]}</Tag></Descriptions.Item>
-          </Descriptions>
+        {selectedBooking && (
+          <div>
+            {/* Basic Info */}
+            <Descriptions
+              bordered
+              size="small"
+              column={2}
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Client">
+                <Text strong>{selectedBooking.clientName}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Prestataire">
+                {selectedBooking.providerName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Service">
+                {SERVICE_LABEL[selectedBooking.serviceType] ?? selectedBooking.serviceType}
+              </Descriptions.Item>
+              <Descriptions.Item label="Date & Heure">
+                {dayjs(selectedBooking.scheduledDate).format('DD/MM/YYYY')} à{' '}
+                {selectedBooking.scheduledTime}
+              </Descriptions.Item>
+              <Descriptions.Item label="Durée">
+                {selectedBooking.durationHours}h
+              </Descriptions.Item>
+              <Descriptions.Item label="Adresse">
+                {selectedBooking.address ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ville">
+                {selectedBooking.city ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Notes">
+                {selectedBooking.notes ?? '—'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* Financial Info */}
+            <Descriptions
+              bordered
+              size="small"
+              column={3}
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Montant total">
+                <Text strong>{selectedBooking.totalAmount.toFixed(2)} MAD</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Commission (15%)">
+                {selectedBooking.commission.toFixed(2)} MAD
+              </Descriptions.Item>
+              <Descriptions.Item label="Versement prestataire">
+                {selectedBooking.providerAmount.toFixed(2)} MAD
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* Status Actions */}
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Space wrap>
+                <Tag color={STATUS_COLOR[selectedBooking.status]}>
+                  {STATUS_LABEL[selectedBooking.status] ?? selectedBooking.status}
+                </Tag>
+                <Text>Changer le statut :</Text>
+                <Select
+                  value={selectedBooking.status}
+                  style={{ width: 160 }}
+                  onChange={async (newStatus) => {
+                    await apiClient.patch(
+                      `/admin/bookings/${selectedBooking.id}/status`,
+                      { status: newStatus }
+                    );
+                    message.success('Statut mis à jour');
+                    refetch();
+                    setSelectedBooking((prev) =>
+                      prev ? { ...prev, status: newStatus } : null
+                    );
+                  }}
+                  options={Object.entries(STATUS_LABEL).map(([v, l]) => ({
+                    value: v,
+                    label: l,
+                  }))}
+                />
+                <Button
+                  danger
+                  icon={<StopOutlined />}
+                  onClick={() =>
+                    Modal.confirm({
+                      title: 'Annuler cette réservation?',
+                      onOk: async () => {
+                        await apiClient.patch(
+                          `/admin/bookings/${selectedBooking.id}/status`,
+                          { status: 'CANCELLED' }
+                        );
+                        refetch();
+                        setSelectedBooking(null);
+                      },
+                    })
+                  }
+                >
+                  Annuler
+                </Button>
+              </Space>
+            </Card>
+
+            {/* Timeline */}
+            <Steps
+              size="small"
+              current={TIMELINE_STEPS.indexOf(selectedBooking.status)}
+              items={[
+                {
+                  title: 'En attente',
+                  description: dayjs(selectedBooking.createdAt).format('DD/MM HH:mm'),
+                },
+                { title: 'Confirmée' },
+                { title: 'En cours' },
+                { title: 'Terminée' },
+              ]}
+            />
+          </div>
         )}
       </Modal>
     </div>
   );
-}
+};
+
+export default BookingsPage;
