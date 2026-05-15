@@ -6,6 +6,13 @@ export enum UserRole {
   ADMIN = 'ADMIN',
 }
 
+export enum UserStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  BANNED = 'BANNED',
+}
+
 export enum BookingStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
@@ -16,18 +23,22 @@ export enum BookingStatus {
 }
 
 export enum ServiceType {
-  STANDARD = 'STANDARD',
-  DEEP_CLEAN = 'DEEP_CLEAN',
-  MOVE_IN_OUT = 'MOVE_IN_OUT',
-  OFFICE = 'OFFICE',
+  CLEANING = 'CLEANING',
+  IRONING = 'IRONING',
+  DEEP_CLEANING = 'DEEP_CLEANING',
   POST_CONSTRUCTION = 'POST_CONSTRUCTION',
+  COOKING = 'COOKING',
+}
+
+export enum PaymentMethod {
+  ONLINE = 'ONLINE',
+  CASH = 'CASH',
 }
 
 export enum PaymentStatus {
   PENDING = 'PENDING',
   PAID = 'PAID',
   REFUNDED = 'REFUNDED',
-  FAILED = 'FAILED',
 }
 
 export enum NotificationType {
@@ -49,9 +60,9 @@ export interface User {
   phone: string;
   firstName: string;
   lastName: string;
-  avatar?: string;
+  avatarUrl?: string;
   role: UserRole;
-  isActive: boolean;
+  status: UserStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,22 +73,28 @@ export interface Address {
   label: string;
   street: string;
   city: string;
-  postalCode: string;
-  country: string;
+  district?: string;
   lat: number;
   lng: number;
   isDefault: boolean;
 }
 
-export interface Provider extends User {
+export interface ProviderProfile {
+  id: string;
+  userId: string;
   bio?: string;
-  rating: number;
-  reviewCount: number;
+  hourlyRateMin: number;
+  hourlyRateMax: number;
   isVerified: boolean;
   isAvailable: boolean;
-  servicesOffered: ServiceType[];
-  pricePerHour: number;
-  coverageRadius: number;
+  isOnline: boolean;
+  averageRating: number;
+  totalReviews: number;
+  totalMissions: number;
+  serviceRadiusKm: number;
+  lat?: number;
+  lng?: number;
+  user?: User;
 }
 
 export interface Service {
@@ -95,33 +112,27 @@ export interface Booking {
   id: string;
   clientId: string;
   providerId: string;
-  serviceId: string;
   addressId: string;
+  serviceType: ServiceType;
   status: BookingStatus;
-  scheduledAt: string;
+  scheduledDate: string;
+  scheduledTime: string;
   durationHours: number;
-  totalPrice: number;
-  notes?: string;
+  totalAmount: number;
+  commission: number;
+  providerAmount: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  clientNotes?: string;
+  cancellationReason?: string;
+  startedAt?: string;
+  completedAt?: string;
   client?: User;
-  provider?: Provider;
-  service?: Service;
+  provider?: ProviderProfile;
   address?: Address;
-  payment?: Payment;
   review?: Review;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface Payment {
-  id: string;
-  bookingId: string;
-  amount: number;
-  currency: string;
-  status: PaymentStatus;
-  youcanPayOrderId?: string;
-  youcanPayTransactionId?: string;
-  paidAt?: string;
-  createdAt: string;
 }
 
 export interface Review {
@@ -131,6 +142,7 @@ export interface Review {
   providerId: string;
   rating: number;
   comment?: string;
+  isPublished: boolean;
   createdAt: string;
 }
 
@@ -154,6 +166,17 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface WithdrawalRequest {
+  id: string;
+  providerId: string;
+  amount: number;
+  bankAccountRib: string;
+  status: 'PENDING' | 'PROCESSED' | 'REJECTED';
+  requestedAt: string;
+  processedAt?: string;
+  notes?: string;
+}
+
 // ─── API DTOs ─────────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
@@ -171,12 +194,14 @@ export interface PaginatedResponse<T> {
 }
 
 export interface CreateBookingDto {
-  serviceId: string;
   providerId: string;
   addressId: string;
-  scheduledAt: string;
+  serviceType: ServiceType;
+  scheduledDate: string;
+  scheduledTime: string;
   durationHours: number;
-  notes?: string;
+  paymentMethod: PaymentMethod;
+  clientNotes?: string;
 }
 
 export interface UpdateBookingStatusDto {

@@ -16,6 +16,7 @@ import { BookingDetailScreen } from '../screens/client/BookingDetailScreen';
 import { LiveTrackingScreen } from '../screens/client/LiveTrackingScreen';
 import { ChatScreen } from '../screens/client/ChatScreen';
 import { ReviewScreen } from '../screens/client/ReviewScreen';
+import { PaymentScreen } from '../screens/client/PaymentScreen';
 
 // Provider screens
 import { ActiveMissionScreen } from '../screens/provider/ActiveMissionScreen';
@@ -59,6 +60,7 @@ export function RootNavigator() {
             <Root.Screen name="LiveTracking" component={LiveTrackingScreen} options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }} />
             <Root.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
             <Root.Screen name="Review" component={ReviewScreen} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+            <Root.Screen name="Payment" component={PaymentScreen} options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }} />
           </>
         )}
       </Root.Navigator>

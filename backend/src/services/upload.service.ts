@@ -115,7 +115,7 @@ export async function uploadFile(
     }
   } catch (err) {
     log.error('Erreur upload', { error: (err as Error).message, category });
-    throw new AppError(500, ErrorCode.INTERNAL_ERROR, 'Erreur lors de l\'upload du fichier');
+    throw new AppError(500, ErrorCode.SERVER_ERROR, 'Erreur lors de l\'upload du fichier');
   }
 }
 

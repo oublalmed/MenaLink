@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
 import { ok, created } from '../utils/response';
-import { AuthRequest } from '../middleware/authenticate';
 
 export async function registerClient(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -31,7 +30,7 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
   } catch (err) { next(err); }
 }
 
-export async function getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { getMyProfile } = await import('../services/user.service');
     const user = await getMyProfile(req.userId);

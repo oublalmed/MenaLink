@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as providerService from '../services/provider.service';
 import { ok, paginated, buildPagination } from '../utils/response';
-import { AuthRequest } from '../middleware/authenticate';
 import { AppError, ErrorCode } from '../utils/errors';
 
 export async function listProviders(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -26,21 +25,21 @@ export async function getProviderAvailability(req: Request, res: Response, next:
   } catch (err) { next(err); }
 }
 
-export async function updateProviderProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateProviderProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const profile = await providerService.updateProviderProfile(req.userId, req.body);
     ok(res, profile, 'Profil mis à jour');
   } catch (err) { next(err); }
 }
 
-export async function updateLocation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await providerService.updateProviderLocation(req.userId, req.body);
     ok(res, null, 'Position mise à jour');
   } catch (err) { next(err); }
 }
 
-export async function uploadDocuments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function uploadDocuments(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files?.length) throw AppError.badRequest(ErrorCode.VALIDATION_ERROR, 'Aucun fichier fourni');
@@ -70,7 +69,7 @@ export async function getNearbyProviders(req: Request, res: Response, next: Next
 }
 
 // stub disponibilités (PUT)
-export async function updateAvailability(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function updateAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await providerService.updateProviderProfile(req.userId, { isAvailable: req.body.isAvailable as boolean });
     ok(res, null, 'Disponibilité mise à jour');

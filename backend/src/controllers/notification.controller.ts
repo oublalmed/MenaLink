@@ -1,9 +1,8 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as notifService from '../services/notification.service';
 import { ok, paginated, buildPagination } from '../utils/response';
-import { AuthRequest } from '../middleware/authenticate';
 
-export async function getNotifications(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getNotifications(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { page, limit } = req.pagination;
     const { items, total } = await notifService.getNotifications(req.userId, page, limit);
@@ -11,14 +10,14 @@ export async function getNotifications(req: AuthRequest, res: Response, next: Ne
   } catch (err) { next(err); }
 }
 
-export async function markAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function markAsRead(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await notifService.markAsRead(req.params.id, req.userId);
     ok(res, null, 'Notification marquée comme lue');
   } catch (err) { next(err); }
 }
 
-export async function markAllAsRead(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function markAllAsRead(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await notifService.markAllAsRead(req.userId);
     ok(res, null, 'Toutes les notifications ont été lues');

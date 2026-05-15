@@ -131,10 +131,9 @@ describe('notification.service', () => {
     });
 
     it('calculates skip correctly for page 2', async () => {
-      mockTransaction.mockImplementation(async (ops: unknown[]) => {
-        // Execute both queries
-        return Promise.all((ops as Array<() => Promise<unknown>>).map((op) => op()));
-      });
+      mockTransaction.mockImplementation(async (ops: unknown[]) =>
+        Promise.all(ops as Array<Promise<unknown>>),
+      );
       mockFindMany.mockResolvedValue([]);
       mockCount.mockResolvedValue(0);
 
@@ -147,7 +146,7 @@ describe('notification.service', () => {
 
     it('orders results by createdAt descending', async () => {
       mockTransaction.mockImplementation(async (ops: unknown[]) =>
-        Promise.all((ops as Array<() => Promise<unknown>>).map((op) => op())),
+        Promise.all(ops as Array<Promise<unknown>>),
       );
       mockFindMany.mockResolvedValue([]);
       mockCount.mockResolvedValue(0);

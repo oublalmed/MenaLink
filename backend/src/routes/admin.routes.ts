@@ -16,14 +16,20 @@ router.use(authenticate, authorize(UserRole.ADMIN));
 
 router.get( '/dashboard',              ctrl.getDashboard);
 router.get( '/users',                  validateQuery(adminUserListSchema),    ctrl.listUsers);
+router.get( '/users/:id',              ctrl.getUserById);
 router.patch('/users/:id/status',      validateBody(adminUserStatusSchema),   ctrl.setUserStatus);
 router.get( '/providers',              paginate(),                            ctrl.listAllProviders);
 router.get( '/providers/pending',      paginate(),                            ctrl.listPendingProviders);
 router.patch('/providers/:id/verify',  validateBody(adminVerifyProviderSchema), ctrl.verifyProvider);
 router.get( '/bookings',               validateQuery(adminBookingListSchema), ctrl.listAllBookings);
+router.patch('/bookings/:id/status',   ctrl.updateBookingStatus);
+router.get( '/payments/stats',         ctrl.getPaymentsStats);
 router.get( '/transactions',           paginate(),                            ctrl.listAllTransactions);
+router.get( '/withdrawals',            paginate(),                            ctrl.listWithdrawals);
+router.patch('/withdrawals/:id',       ctrl.updateWithdrawal);
 router.get( '/disputes',               paginate(),                            ctrl.listDisputes);
-router.patch('/disputes/:id',          validateBody(adminResolveDisputeSchema), ctrl.resolveDispute);
+router.get( '/disputes/:id',           ctrl.getDisputeById);
+router.patch('/disputes/:id/resolve',  validateBody(adminResolveDisputeSchema), ctrl.resolveDispute);
 router.get( '/settings',               ctrl.getSettings);
 router.put( '/settings/:key',          validateBody(adminSettingSchema),      ctrl.updateSetting);
 

@@ -59,25 +59,25 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   },
 
   acceptMission: async (id) => {
-    await api.patch(`/bookings/${id}/confirm`);
+    await api.put(`/bookings/${id}/confirm`);
     set(s => ({ pendingMissions: s.pendingMissions.filter(m => m.id !== id) }));
     Toast.show({ type: 'success', text1: 'Mission acceptée ✓', text2: 'Le client a été notifié.' });
   },
 
   declineMission: async (id, reason) => {
-    await api.patch(`/bookings/${id}/decline`, { reason });
+    await api.put(`/bookings/${id}/decline`, { reason });
     set(s => ({ pendingMissions: s.pendingMissions.filter(m => m.id !== id) }));
     Toast.show({ type: 'info', text1: 'Mission refusée', text2: 'Le client a été notifié.' });
   },
 
   startMission: async (id) => {
-    const res = await api.patch<Mission>(`/bookings/${id}/start`);
+    const res = await api.put<Mission>(`/bookings/${id}/start`);
     set({ activeMission: res.data });
     Toast.show({ type: 'success', text1: 'Mission démarrée ✓' });
   },
 
   completeMission: async (id) => {
-    await api.patch(`/bookings/${id}/complete`);
+    await api.put(`/bookings/${id}/complete`);
     set({ activeMission: null });
     Toast.show({ type: 'success', text1: 'Mission terminée 🏁', text2: 'Gains crédités sur votre solde.' });
   },

@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import * as reviewService from '../services/review.service';
 import { ok, created, paginated, buildPagination } from '../utils/response';
-import { AuthRequest } from '../middleware/authenticate';
 
-export async function createReview(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function createReview(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const review = await reviewService.createReview(req.userId, req.body);
     created(res, review, 'Avis soumis');
@@ -18,7 +17,7 @@ export async function getProviderReviews(req: Request, res: Response, next: Next
   } catch (err) { next(err); }
 }
 
-export async function deleteReview(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function deleteReview(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await reviewService.deleteReview(req.params.id);
     ok(res, null, 'Avis supprimé');

@@ -43,12 +43,12 @@ export async function getDashboardKPIs() {
       take: 10, orderBy: { createdAt: 'desc' },
       include: {
         client:   { select: { firstName: true, lastName: true, email: true } },
-        provider: { select: { user: { select: { firstName: true, lastName: true } } } },
+        provider: { select: { firstName: true, lastName: true } },
       },
     }),
     prisma.providerProfile.findMany({
       where: { isVerified: false },
-      take: 10, orderBy: { createdAt: 'desc' },
+      take: 10, orderBy: { user: { createdAt: 'desc' } },
       include: { user: { select: { id: true, firstName: true, lastName: true, email: true, createdAt: true } }, services: { select: { serviceType: true } } },
     }),
   ]);
@@ -95,7 +95,7 @@ export async function getDashboardKPIs() {
   const recentBookings = recentBookingsList.map(b => ({
     id:            b.id,
     client:        b.client,
-    provider:      b.provider?.user ?? null,
+    provider:      b.provider ?? null,
     serviceType:   b.serviceType,
     scheduledDate: b.scheduledDate,
     totalAmount:   Number(b.totalAmount),
@@ -348,11 +348,10 @@ export async function listAllProviders(query: { page: number; limit: number; sta
 
   const [items, total] = await prisma.$transaction([
     prisma.providerProfile.findMany({
-      where, skip, take: limit, orderBy: { createdAt: 'desc' },
+      where, skip, take: limit, orderBy: { user: { createdAt: 'desc' } },
       include: {
         user:     { select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatarUrl: true, status: true, createdAt: true } },
         services: { select: { serviceType: true, pricePerHour: true } },
-        _count:   { select: { bookingsAsProvider: true } },
       },
     }),
     prisma.providerProfile.count({ where }),
@@ -370,8 +369,8 @@ export async function listAllProviders(query: { page: number; limit: number; sta
       status:       p.user.status,
       isVerified:   p.isVerified,
       isAvailable:  p.isAvailable,
-      rating:       Number(p.rating),
-      totalMissions: p._count.bookingsAsProvider,
+      rating:       Number(p.averageRating),
+      totalMissions: p.totalMissions,
       services:     p.services,
       createdAt:    p.user.createdAt,
     })),
@@ -396,4 +395,87 @@ export async function listAllTransactions(page: number, limit: number) {
     prisma.transaction.count(),
   ]);
   return { items, total };
+}
+
+// ─── Nouveaux endpoints manquants ─────────────────────────────────────────────
+
+export async function getUserById(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      providerProfile: {
+        include: { services: true },
+      },
+    },
+  });
+  if (!user) return null;
+  return user;
+}
+
+export async function updateBookingStatus(bookingId: string, status: BookingStatus, adminId: string) {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) throw new Error('Réservation introuvable');
+  return prisma.booking.update({
+    where: { id: bookingId },
+    data:  { status },
+  });
+}
+
+export async function getDisputeById(disputeId: string) {
+  return prisma.dispute.findUnique({
+    where: { id: disputeId },
+    include: {
+      booking: {
+        include: {
+          client:   { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          provider: { select: { id: true, firstName: true, lastName: true, email: true } },
+        },
+      },
+      reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+      assignee: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  });
+}
+
+export async function listWithdrawals(page: number, limit: number, status?: string) {
+  const skip  = (page - 1) * limit;
+  const where = status ? { status: status as 'PENDING' | 'PROCESSED' | 'REJECTED' } : {};
+  const [items, total] = await prisma.$transaction([
+    prisma.withdrawalRequest.findMany({
+      where, skip, take: limit, orderBy: { requestedAt: 'desc' },
+      include: {
+        provider: {
+          include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+        },
+      },
+    }),
+    prisma.withdrawalRequest.count({ where }),
+  ]);
+  return { items, total };
+}
+
+export async function updateWithdrawal(id: string, status: 'PROCESSED' | 'REJECTED', notes?: string) {
+  return prisma.withdrawalRequest.update({
+    where: { id },
+    data:  { status, processedAt: new Date(), notes },
+  });
+}
+
+export async function getPaymentsStats() {
+  const now       = new Date();
+  const monthAgo  = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+  const [totalRevRaw, monthRevRaw, pendingWithdrawals, totalWithdrawals] = await Promise.all([
+    prisma.transaction.aggregate({ where: { type: 'PAYMENT', status: 'SUCCESS' }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { type: 'PAYMENT', status: 'SUCCESS', createdAt: { gte: monthAgo } }, _sum: { amount: true } }),
+    prisma.withdrawalRequest.count({ where: { status: 'PENDING' } }),
+    prisma.withdrawalRequest.aggregate({ where: { status: 'PROCESSED' }, _sum: { amount: true } }),
+  ]);
+
+  return {
+    totalRevenue:        Number(totalRevRaw._sum.amount ?? 0),
+    monthlyRevenue:      Number(monthRevRaw._sum.amount ?? 0),
+    pendingWithdrawals,
+    totalWithdrawn:      Number(totalWithdrawals._sum.amount ?? 0),
+  };
 }

@@ -60,7 +60,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         dto.password,
       );
 
-      const response = await api.post<User>('/auth/register', {
+      const endpoint = dto.role === 'PROVIDER' ? '/auth/register/provider' : '/auth/register/client';
+      const response = await api.post<User>(endpoint, {
         ...dto,
         firebaseUid: firebaseUser.uid,
       });

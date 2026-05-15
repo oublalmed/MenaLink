@@ -58,7 +58,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   },
 
   cancelBooking: async (id) => {
-    await api.patch(`/bookings/${id}/cancel`);
+    await api.put(`/bookings/${id}/cancel`);
     set((state) => ({
       bookings: state.bookings.map((b) =>
         b.id === id ? { ...b, status: 'CANCELLED' as const } : b,

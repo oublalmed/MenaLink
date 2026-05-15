@@ -250,7 +250,7 @@ export async function cancelBooking(bookingId: string, clientId: string, reason:
   if (!booking) throw AppError.notFound(ErrorCode.BOOKING_NOT_FOUND, 'Réservation introuvable');
   if (booking.clientId !== clientId) throw AppError.forbidden();
 
-  const cancelable = [BookingStatus.PENDING, BookingStatus.CONFIRMED];
+  const cancelable: BookingStatus[] = [BookingStatus.PENDING, BookingStatus.CONFIRMED];
   if (!cancelable.includes(booking.status)) {
     throw AppError.badRequest(ErrorCode.BOOKING_CANNOT_CANCEL, 'Cette réservation ne peut plus être annulée');
   }

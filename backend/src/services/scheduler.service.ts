@@ -87,7 +87,7 @@ async function autoDeclineExpiredRequests(): Promise<void> {
     for (const booking of expired) {
       await prisma.booking.update({
         where: { id: booking.id },
-        data:  { status: 'CANCELLED', cancelledBy: 'SYSTEM', cancellationReason: 'Délai d\'acceptation dépassé (30 min)' },
+        data:  { status: 'CANCELLED', cancellationReason: 'Délai d\'acceptation dépassé (30 min)' },
       });
 
       // Notifier le client

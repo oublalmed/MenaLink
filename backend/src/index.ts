@@ -25,6 +25,7 @@ import earningsRoutes     from './routes/earnings.routes';
 import reviewRoutes       from './routes/review.routes';
 import notificationRoutes from './routes/notification.routes';
 import adminRoutes        from './routes/admin.routes';
+import serviceRoutes      from './routes/service.routes';
 
 const app        = express();
 const PORT       = process.env.PORT ?? 4000;
@@ -107,6 +108,7 @@ app.use(`${API_PREFIX}/earnings`,      earningsRoutes);
 app.use(`${API_PREFIX}/reviews`,       reviewRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationRoutes);
 app.use(`${API_PREFIX}/admin`,         adminRoutes);
+app.use(`${API_PREFIX}/services`,      serviceRoutes);
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
