@@ -12,6 +12,7 @@ const router = Router();
 router.use(authenticate, authorize(UserRole.PROVIDER));
 
 router.get( '/summary',      validateQuery(earningsPeriodSchema),     ctrl.getSummary);
+router.get( '/weekly',        ctrl.getWeeklyChart);
 router.get( '/transactions',  paginate(),                              ctrl.getTransactions);
 router.post('/withdraw',      validateBody(withdrawSchema),            ctrl.requestWithdraw);
 router.get( '/withdrawals',   paginate(),                              ctrl.listWithdrawals);

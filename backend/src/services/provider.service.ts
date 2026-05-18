@@ -158,3 +158,62 @@ export async function uploadDocuments(
     data:  docs,
   });
 }
+
+// ─── Statistiques tableau de bord prestataire ─────────────────────────────────
+
+export async function getProviderStats(userId: string) {
+  const profile = await prisma.providerProfile.findUnique({ where: { userId } });
+  if (!profile) throw AppError.notFound(ErrorCode.PROVIDER_NOT_FOUND, 'Profil prestataire introuvable');
+
+  const now        = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thirtyAgo  = new Date(now); thirtyAgo.setDate(now.getDate() - 30);
+
+  const [
+    todayMissions, monthMissions,
+    todayEarningsRaw,
+    confirmedLast30, cancelledLast30,
+  ] = await Promise.all([
+    prisma.booking.count({
+      where: { providerId: userId, status: 'COMPLETED', completedAt: { gte: todayStart } },
+    }),
+    prisma.booking.count({
+      where: { providerId: userId, status: 'COMPLETED', completedAt: { gte: monthStart } },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId, type: 'PAYMENT', status: 'SUCCESS', createdAt: { gte: todayStart } },
+      _sum: { amount: true },
+    }),
+    prisma.booking.count({
+      where: { providerId: userId, status: 'CONFIRMED', createdAt: { gte: thirtyAgo } },
+    }),
+    prisma.booking.count({
+      where: { providerId: userId, status: 'CANCELLED', createdAt: { gte: thirtyAgo } },
+    }),
+  ]);
+
+  const total = confirmedLast30 + cancelledLast30;
+  const acceptanceRate = total > 0 ? Math.round((confirmedLast30 / total) * 100) : 100;
+
+  return {
+    todayMissions,
+    todayEarnings:  parseFloat(Number(todayEarningsRaw._sum.amount ?? 0).toFixed(2)),
+    averageRating:  Number(profile.averageRating),
+    monthMissions,
+    acceptanceRate,
+    isAvailable:    profile.isAvailable,
+    isOnline:       profile.isOnline,
+  };
+}
+
+// ─── Patch rapide disponibilité / statut ──────────────────────────────────────
+
+export async function patchProviderMe(
+  userId: string,
+  data: { isAvailable?: boolean; isOnline?: boolean },
+) {
+  const profile = await prisma.providerProfile.findUnique({ where: { userId } });
+  if (!profile) throw AppError.notFound(ErrorCode.PROVIDER_NOT_FOUND, 'Profil prestataire introuvable');
+  return prisma.providerProfile.update({ where: { userId }, data });
+}

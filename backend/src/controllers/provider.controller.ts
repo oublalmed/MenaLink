@@ -75,3 +75,18 @@ export async function updateAvailability(req: Request, res: Response, next: Next
     ok(res, null, 'Disponibilité mise à jour');
   } catch (err) { next(err); }
 }
+
+export async function getMyStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const stats = await providerService.getProviderStats(req.userId);
+    ok(res, stats);
+  } catch (err) { next(err); }
+}
+
+export async function patchProviderMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { isAvailable, isOnline } = req.body as { isAvailable?: boolean; isOnline?: boolean };
+    await providerService.patchProviderMe(req.userId, { isAvailable, isOnline });
+    ok(res, null, 'Profil mis à jour');
+  } catch (err) { next(err); }
+}

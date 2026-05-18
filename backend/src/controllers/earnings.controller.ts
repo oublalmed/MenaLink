@@ -31,3 +31,10 @@ export async function listWithdrawals(req: Request, res: Response, next: NextFun
     paginated(res, items, buildPagination(total, page, limit));
   } catch (err) { next(err); }
 }
+
+export async function getWeeklyChart(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const chart = await earningsService.getWeeklyChart(req.userId);
+    ok(res, chart);
+  } catch (err) { next(err); }
+}

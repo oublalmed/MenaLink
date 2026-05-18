@@ -20,9 +20,11 @@ router.get( '/:id',                                               ctrl.getProvid
 router.get( '/:id/availability',                                  ctrl.getProviderAvailability);
 
 // Routes prestataire authentifié
-router.put( '/profile',       authenticate, authorize(UserRole.PROVIDER), validateBody(updateProviderSchema),  ctrl.updateProviderProfile);
-router.put( '/availability',  authenticate, authorize(UserRole.PROVIDER), validateBody(z.object({ isAvailable: z.boolean() })), ctrl.updateAvailability);
-router.put( '/location',      authenticate, authorize(UserRole.PROVIDER), validateBody(updateLocationSchema),  ctrl.updateLocation);
-router.post('/documents',     authenticate, authorize(UserRole.PROVIDER), uploadMultiple,                      ctrl.uploadDocuments);
+router.get( '/me/stats',     authenticate, authorize(UserRole.PROVIDER),                                                        ctrl.getMyStats);
+router.patch('/me',          authenticate, authorize(UserRole.PROVIDER), validateBody(z.object({ isAvailable: z.boolean().optional(), isOnline: z.boolean().optional() })), ctrl.patchProviderMe);
+router.put( '/profile',      authenticate, authorize(UserRole.PROVIDER), validateBody(updateProviderSchema),                    ctrl.updateProviderProfile);
+router.put( '/availability', authenticate, authorize(UserRole.PROVIDER), validateBody(z.object({ isAvailable: z.boolean() })), ctrl.updateAvailability);
+router.put( '/location',     authenticate, authorize(UserRole.PROVIDER), validateBody(updateLocationSchema),                    ctrl.updateLocation);
+router.post('/documents',    authenticate, authorize(UserRole.PROVIDER), uploadMultiple,                                        ctrl.uploadDocuments);
 
 export default router;

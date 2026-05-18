@@ -143,3 +143,31 @@ function getPeriodBounds(period: string, now: Date): { start: Date; end: Date } 
   }
   return { start, end: now };
 }
+
+// ─── Graphe hebdomadaire (7 derniers jours) ───────────────────────────────────
+
+export async function getWeeklyChart(userId: string) {
+  const now  = new Date();
+  const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const result: { day: string; amount: number }[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const from = new Date(now);
+    from.setDate(now.getDate() - i);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    const agg = await prisma.transaction.aggregate({
+      where: { userId, type: TransactionType.PAYMENT, status: TransactionStatus.SUCCESS, createdAt: { gte: from, lte: to } },
+      _sum:  { amount: true },
+    });
+
+    result.push({
+      day:    days[from.getDay()],
+      amount: parseFloat(Number(agg._sum.amount ?? 0).toFixed(2)),
+    });
+  }
+
+  return result;
+}
