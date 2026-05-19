@@ -48,6 +48,11 @@ export const useAdminAuth = create<AdminAuthState>((set, get) => ({
   otpSent: false,
 
   initialize: () => {
+    // DEV MODE: bypass Firebase auth to allow dashboard access
+    if (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true') {
+      set({ firebaseUser: null, isAuthenticated: true, isInitialized: true });
+      return () => {};
+    }
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       set({ firebaseUser: user, isAuthenticated: !!user, isInitialized: true });
       if (user) {

@@ -30,6 +30,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
 
   initialize: () => {
+    // DEV: if Firebase is not configured, skip auth and show auth screens
+    const apiKey = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
+    if (!apiKey || apiKey === 'AIzaSy...' || apiKey === 'placeholder') {
+      set({ firebaseUser: null, user: null, isInitialized: true });
+      return () => {};
+    }
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       set({ firebaseUser, isInitialized: true });
       if (firebaseUser) {

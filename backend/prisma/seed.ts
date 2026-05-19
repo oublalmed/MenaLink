@@ -5,7 +5,7 @@
  * Usage : npx tsx prisma/seed.ts
  */
 
-import { PrismaClient, UserRole, UserStatus, ServiceType, BookingStatus, PaymentMethod, PaymentStatus, TransactionType, TransactionStatus, DisputeStatus } from '@prisma/client';
+import { PrismaClient, UserRole, UserStatus, ServiceType, BookingStatus, PaymentMethod, PaymentStatus, TransactionType, TransactionStatus, DisputeStatus, WithdrawalStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
